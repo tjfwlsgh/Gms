@@ -1,0 +1,1150 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+ 	@FileName    : IncMonAggrDao.java
+	@Date        : 2022.03.31
+ 	@Author      : jokim
+ 	@Description : 손익 당월집계 DAO DB Query Mapper xml
+ 	@History     :
+ -->
+<!DOCTYPE mapper
+    PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+    "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="com.lgl.gms.webapi.inc.persistence.dao.IncCurrMonPerfDao">
+
+  	
+  	<!-- 손익집계 리스트 조회 -->
+	<select id="selectIncCurrMonPerfList" resultType="com.lgl.gms.webapi.inc.dto.response.BoIncCurrMonPerfResponse" parameterType="com.lgl.gms.webapi.inc.dto.request.BoIncCurrMonPerfRequest">
+	  select t.*
+	  
+	  		,if(t.mon_curr_amt_r > 0 and t.mon_curr_amt_ly > 0, ifnull(ROUND((t.mon_curr_amt_r/t.mon_curr_amt_ly)*100, 2)-100, 0), 0) as mon_curr_yoy
+	  		,if(t.mon_curr_amt_r > 0 and t.mon_curr_amt_p > 0, ifnull(ROUND((t.mon_curr_amt_r/t.mon_curr_amt_p)*100, 2)-100, 0), 0) as mon_curr_poy
+	  		,if(t.mon_sum_amt_r > 0 and t.mon_sum_amt_ly > 0, ifnull(ROUND((t.mon_sum_amt_r/t.mon_sum_amt_ly)*100, 2)-100, 0), 0) as mon_sum_yoy
+	  		,if(t.mon_sum_amt_r > 0 and t.mon_sum_amt_p > 0, ifnull(ROUND((t.mon_sum_amt_r/t.mon_sum_amt_p)*100, 2)-100, 0), 0) as mon_sum_poy
+	  
+		  from (
+		  
+			 select t.itm_nm
+			 	 ,t.inc_itm_id
+			 	 
+			 	 ,sum(if(#{untDp}='10', t.mon_curr_amt_r, ROUND(t.mon_curr_amt_r * if(t.crncy_cd='KRW', 1, @column:=c.${currColExr})/unt, 2))) as mon_curr_amt_r
+				 ,sum(if(#{untDp}='10', t.mon_curr_amt_p, ROUND(t.mon_curr_amt_p * if(t.crncy_cd='KRW', 1, @column:=cp.${currColExr})/unt, 2))) as mon_curr_amt_p
+				 ,sum(if(#{untDp}='10', t.mon_curr_amt_ly, ROUND(t.mon_curr_amt_ly * if(t.crncy_cd='KRW', 1, @column:=c2.${currColExr})/unt, 2))) as mon_curr_amt_ly
+						 
+			   	 ,sum(if(#{untDp}='10', t.mon_sum_amt_r, ROUND(t.mon_sum_amt_r * if(t.crncy_cd='KRW', 1, @column:=c.${currColExr})/unt, 2))) as mon_sum_amt_r
+			   	 ,sum(if(#{untDp}='10', t.mon_sum_amt_p, ROUND(t.mon_sum_amt_p * if(t.crncy_cd='KRW', 1, @column:=cp.${currColExr})/unt, 2))) as mon_sum_amt_p
+				 ,sum(if(#{untDp}='10', t.mon_sum_amt_ly, ROUND(t.mon_sum_amt_ly * if(t.crncy_cd='KRW', 1, @column:=c2.${currColExr})/unt, 2))) as mon_sum_amt_ly
+				  
+				 ,t.view_seq
+			   	 ,t.lv_cl
+			 from (
+					select fn_edit_itm_nm(t.grp_lv+if(t.lv_cl = 0, 1, t.lv_cl), LTRIM(t.itm_nm), '') as itm_nm
+						 ,t.inc_itm_id
+						 
+						 ,sum(t.mon_curr_amt_r) as mon_curr_amt_r
+						 ,sum(t.mon_curr_amt_p) as mon_curr_amt_p
+						 ,sum(t.mon_curr_amt_ly) as mon_curr_amt_ly
+						 
+						 ,sum(ifnull(t.mon_01_amt_r, 0)+ifnull(t.mon_02_amt_r, 0)+ifnull(t.mon_03_amt_r, 0)+ifnull(t.mon_04_amt_r, 0)+ifnull(t.mon_04_amt_r, 0)
+					 		+ifnull(t.mon_06_amt_r, 0)+ifnull(t.mon_07_amt_r, 0)+ifnull(t.mon_08_amt_r, 0)+ifnull(t.mon_09_amt_r, 0)+ifnull(t.mon_10_amt_r, 0)
+					 		+ifnull(t.mon_11_amt_r, 0)+ifnull(t.mon_12_amt_r, 0)) as mon_sum_amt_r
+				 		
+						 ,sum(ifnull(t.mon_01_amt_p, 0)+ifnull(t.mon_02_amt_p, 0)+ifnull(t.mon_03_amt_p, 0)+ifnull(t.mon_04_amt_p, 0)+ifnull(t.mon_05_amt_p, 0)
+					 		+ifnull(t.mon_06_amt_p, 0)+ifnull(t.mon_07_amt_p, 0)+ifnull(t.mon_08_amt_p, 0)+ifnull(t.mon_09_amt_p, 0)+ifnull(t.mon_10_amt_p, 0)
+					 		+ifnull(t.mon_11_amt_p, 0)+ifnull(t.mon_12_amt_p, 0)) as mon_sum_amt_p
+						 		
+						 ,sum(ifnull(t.mon_01_amt_ly, 0)+ifnull(t.mon_02_amt_ly, 0)+ifnull(t.mon_03_amt_ly, 0)+ifnull(t.mon_04_amt_ly, 0)+ifnull(t.mon_05_amt_ly, 0)
+					 		+ifnull(t.mon_06_amt_ly, 0)+ifnull(t.mon_07_amt_ly, 0)+ifnull(t.mon_08_amt_ly, 0)+ifnull(t.mon_09_amt_ly, 0)+ifnull(t.mon_10_amt_ly, 0)
+					 		+ifnull(t.mon_11_amt_ly, 0)+ifnull(t.mon_12_amt_ly, 0)) as mon_sum_amt_ly
+						 		
+						 ,(t.grp_lv+if(t.lv_cl = 0, 1, t.lv_cl)) as lv_cl
+						 ,t.view_seq
+						 ,t.trrt_id
+						 ,t.pbo_id
+						 ,t.bo_id
+						 ,t.inc_yy
+						 ,t.crncy_cd
+						 ,(select CAST(cd_val AS SIGNED) from tb_tcc_val t1, tb_tcc t2 where t2.BSE_CD = 'UNTDP' and t1.tcc_id = t2.tcc_id and t1.STD_CD = #{untDp}) unt
+					  from
+						 (
+						 -- 항목
+							select f_get_item_nm(itm.inc_itm_id, #{locale}) as itm_nm
+								,itm.inc_itm_id
+								
+								,sum(if(agg.pln_ret_cl = 'R', @column:=agg.${currColNm}, null)) mon_curr_amt_r	
+								,sum(if(agg.pln_ret_cl = 'R' and CAST(SUBSTR(#{incYymm}, 5) AS SIGNED) >= 1, agg.mon_01_amt, null)) mon_01_amt_r
+								,sum(if(agg.pln_ret_cl = 'R' and CAST(SUBSTR(#{incYymm}, 5) AS SIGNED) >= 2, agg.mon_02_amt, null)) mon_02_amt_r
+								,sum(if(agg.pln_ret_cl = 'R' and CAST(SUBSTR(#{incYymm}, 5) AS SIGNED) >= 3, agg.mon_03_amt, null)) mon_03_amt_r
+								,sum(if(agg.pln_ret_cl = 'R' and CAST(SUBSTR(#{incYymm}, 5) AS SIGNED) >= 4, agg.mon_04_amt, null)) mon_04_amt_r
+								,sum(if(agg.pln_ret_cl = 'R' and CAST(SUBSTR(#{incYymm}, 5) AS SIGNED) >= 5, agg.mon_05_amt, null)) mon_05_amt_r
+								,sum(if(agg.pln_ret_cl = 'R' and CAST(SUBSTR(#{incYymm}, 5) AS SIGNED) >= 6, agg.mon_06_amt, null)) mon_06_amt_r
+								,sum(if(agg.pln_ret_cl = 'R' and CAST(SUBSTR(#{incYymm}, 5) AS SIGNED) >= 7, agg.mon_07_amt, null)) mon_07_amt_r
+								,sum(if(agg.pln_ret_cl = 'R' and CAST(SUBSTR(#{incYymm}, 5) AS SIGNED) >= 8, agg.mon_08_amt, null)) mon_08_amt_r
+								,sum(if(agg.pln_ret_cl = 'R' and CAST(SUBSTR(#{incYymm}, 5) AS SIGNED) >= 9, agg.mon_09_amt, null)) mon_09_amt_r
+								,sum(if(agg.pln_ret_cl = 'R' and CAST(SUBSTR(#{incYymm}, 5) AS SIGNED) >= 10, agg.mon_10_amt, null)) mon_10_amt_r
+								,sum(if(agg.pln_ret_cl = 'R' and CAST(SUBSTR(#{incYymm}, 5) AS SIGNED) >= 11, agg.mon_11_amt, null)) mon_11_amt_r
+								,sum(if(agg.pln_ret_cl = 'R' and CAST(SUBSTR(#{incYymm}, 5) AS SIGNED) >= 12, agg.mon_12_amt, null)) mon_12_amt_r
+								
+								,sum(if(agg.pln_ret_cl = 'P', @column:=agg.${currColNm}, null)) mon_curr_amt_p
+								,sum(if(agg.pln_ret_cl = 'P' and CAST(SUBSTR(#{incYymm}, 5) AS SIGNED) >= 1, agg.mon_01_amt, null)) mon_01_amt_p
+								,sum(if(agg.pln_ret_cl = 'P' and CAST(SUBSTR(#{incYymm}, 5) AS SIGNED) >= 2, agg.mon_02_amt, null)) mon_02_amt_p
+								,sum(if(agg.pln_ret_cl = 'P' and CAST(SUBSTR(#{incYymm}, 5) AS SIGNED) >= 3, agg.mon_03_amt, null)) mon_03_amt_p
+								,sum(if(agg.pln_ret_cl = 'P' and CAST(SUBSTR(#{incYymm}, 5) AS SIGNED) >= 4, agg.mon_04_amt, null)) mon_04_amt_p
+								,sum(if(agg.pln_ret_cl = 'P' and CAST(SUBSTR(#{incYymm}, 5) AS SIGNED) >= 5, agg.mon_05_amt, null)) mon_05_amt_p
+								,sum(if(agg.pln_ret_cl = 'P' and CAST(SUBSTR(#{incYymm}, 5) AS SIGNED) >= 6, agg.mon_06_amt, null)) mon_06_amt_p
+								,sum(if(agg.pln_ret_cl = 'P' and CAST(SUBSTR(#{incYymm}, 5) AS SIGNED) >= 7, agg.mon_07_amt, null)) mon_07_amt_p
+								,sum(if(agg.pln_ret_cl = 'P' and CAST(SUBSTR(#{incYymm}, 5) AS SIGNED) >= 8, agg.mon_08_amt, null)) mon_08_amt_p
+								,sum(if(agg.pln_ret_cl = 'P' and CAST(SUBSTR(#{incYymm}, 5) AS SIGNED) >= 9, agg.mon_09_amt, null)) mon_09_amt_p
+								,sum(if(agg.pln_ret_cl = 'P' and CAST(SUBSTR(#{incYymm}, 5) AS SIGNED) >= 10, agg.mon_10_amt, null)) mon_10_amt_p
+								,sum(if(agg.pln_ret_cl = 'P' and CAST(SUBSTR(#{incYymm}, 5) AS SIGNED) >= 11, agg.mon_11_amt, null)) mon_11_amt_p
+								,sum(if(agg.pln_ret_cl = 'P' and CAST(SUBSTR(#{incYymm}, 5) AS SIGNED) >= 12, agg.mon_12_amt, null)) mon_12_amt_p
+								
+								,sum(if(agg.pln_ret_cl = 'R', @column:=agg.${currColNmLy}, null)) mon_curr_amt_ly
+								,sum(if(agg.pln_ret_cl = 'R' and CAST(SUBSTR(#{incYymm}, 5) AS SIGNED) >= 1, agg.mon_01_amt_ly, null)) mon_01_amt_ly
+								,sum(if(agg.pln_ret_cl = 'R' and CAST(SUBSTR(#{incYymm}, 5) AS SIGNED) >= 2, agg.mon_02_amt_ly, null)) mon_02_amt_ly
+								,sum(if(agg.pln_ret_cl = 'R' and CAST(SUBSTR(#{incYymm}, 5) AS SIGNED) >= 3, agg.mon_03_amt_ly, null)) mon_03_amt_ly
+								,sum(if(agg.pln_ret_cl = 'R' and CAST(SUBSTR(#{incYymm}, 5) AS SIGNED) >= 4, agg.mon_04_amt_ly, null)) mon_04_amt_ly
+								,sum(if(agg.pln_ret_cl = 'R' and CAST(SUBSTR(#{incYymm}, 5) AS SIGNED) >= 5, agg.mon_05_amt_ly, null)) mon_05_amt_ly
+								,sum(if(agg.pln_ret_cl = 'R' and CAST(SUBSTR(#{incYymm}, 5) AS SIGNED) >= 6, agg.mon_06_amt_ly, null)) mon_06_amt_ly
+								,sum(if(agg.pln_ret_cl = 'R' and CAST(SUBSTR(#{incYymm}, 5) AS SIGNED) >= 7, agg.mon_07_amt_ly, null)) mon_07_amt_ly
+								,sum(if(agg.pln_ret_cl = 'R' and CAST(SUBSTR(#{incYymm}, 5) AS SIGNED) >= 8, agg.mon_08_amt_ly, null)) mon_08_amt_ly
+								,sum(if(agg.pln_ret_cl = 'R' and CAST(SUBSTR(#{incYymm}, 5) AS SIGNED) >= 9, agg.mon_09_amt_ly, null)) mon_09_amt_ly
+								,sum(if(agg.pln_ret_cl = 'R' and CAST(SUBSTR(#{incYymm}, 5) AS SIGNED) >= 10, agg.mon_10_amt_ly, null)) mon_10_amt_ly
+								,sum(if(agg.pln_ret_cl = 'R' and CAST(SUBSTR(#{incYymm}, 5) AS SIGNED) >= 10, agg.mon_11_amt_ly, null)) mon_11_amt_ly
+								,sum(if(agg.pln_ret_cl = 'R' and CAST(SUBSTR(#{incYymm}, 5) AS SIGNED) >= 12, agg.mon_12_amt_ly, null)) mon_12_amt_ly
+								
+								,itm.view_seq
+								,0 as grp_lv
+								,itm.lv_cl
+								,'' trrt_id
+								,'' pbo_id
+								,'' bo_id
+								,agg.inc_yy
+								,agg.crncy_cd
+							from tb_inc_itm_info itm
+							left join (					
+										<!--  당해년도(실적/계획) -->
+										select a.acc_cl, a.inc_itm_id, a.pln_ret_cl, a.inc_yy, null as inc_yy_ly, a.bo_id, a.crncy_cd
+											, a.mon_01_amt
+											, a.mon_02_amt
+											, a.mon_03_amt
+											, a.mon_04_amt
+											, a.mon_05_amt
+											, a.mon_06_amt
+											, a.mon_07_amt
+											, a.mon_08_amt
+											, a.mon_09_amt
+											, a.mon_10_amt
+											, a.mon_11_amt
+											, a.mon_12_amt
+											
+											,null as mon_01_amt_ly
+											,null as mon_02_amt_ly
+											,null as mon_03_amt_ly
+											,null as mon_04_amt_ly
+											,null as mon_05_amt_ly
+											,null as mon_06_amt_ly
+											,null as mon_07_amt_ly
+											,null as mon_08_amt_ly
+											,null as mon_09_amt_ly
+											,null as mon_10_amt_ly
+											,null as mon_11_amt_ly
+											,null as mon_12_amt_ly									
+											
+										from (
+											 <!-- lv_cl=0 이고 krw='Y' 인 경우 제외 (-> 해당 손익집계는 현재 환율로 한화를 계산해야함) -->
+											  select a.acc_cl, b.inc_itm_id, a.pln_ret_cl, a.inc_yy, a.bo_id, a.crncy_cd
+										  			, a.mon_01_amt
+													, a.mon_02_amt
+													, a.mon_03_amt
+													, a.mon_04_amt
+													, a.mon_05_amt
+													, a.mon_06_amt
+													, a.mon_07_amt
+													, a.mon_08_amt
+													, a.mon_09_amt
+													, a.mon_10_amt
+													, a.mon_11_amt
+													, a.mon_12_amt
+										  		 from tb_bo_inc_agg a, tb_inc_itm_info b
+										  		where 1=1
+										  		 and a.inc_itm_id = b.inc_itm_id 
+										  		 and !(b.lv_cl = 0 and ifnull(b.krw_yn, 'N') = 'Y')
+										  		 and a.inc_yy = SUBSTR(#{incYymm}, 1, 4)
+										 		 and a.def_cl = #{defCl}
+												 and b.del_yn = 'N'
+												 and a.bo_id in (
+													 select t.bo_id
+													   from tb_bo t
+													  where t.comp_id = #{compId}
+													   and t.bo_cl = 'H'
+													   and t.use_yn = 'Y'										 	
+								               		)
+								               		
+								               union all
+								               
+								               <!-- lv_cl=0 이고 krw='Y' 인 경우 (-> 현재 환율로 한화를 계산해야함) -->
+								               select a.acc_cl, b.inc_itm_id, a.pln_ret_cl, a.inc_yy, a.bo_id, a.crncy_cd
+										  			, a.mon_01_amt * sb.frml_sign AS MON_01_AMT
+													, a.mon_02_amt * sb.frml_sign AS MON_02_AMT
+													, a.mon_03_amt * sb.frml_sign AS MON_03_AMT
+													, a.mon_04_amt * sb.frml_sign AS MON_04_AMT
+													, a.mon_05_amt * sb.frml_sign AS MON_05_AMT
+													, a.mon_06_amt * sb.frml_sign AS MON_06_AMT
+													, a.mon_07_amt * sb.frml_sign AS MON_07_AMT
+													, a.mon_08_amt * sb.frml_sign AS MON_08_AMT
+													, a.mon_09_amt * sb.frml_sign AS MON_09_AMT
+													, a.mon_10_amt * sb.frml_sign AS MON_10_AMT
+													, a.mon_11_amt * sb.frml_sign AS MON_11_AMT
+													, a.mon_12_amt * sb.frml_sign AS MON_12_AMT
+										  		 from tb_bo_inc_agg a, tb_inc_itm_info b, vw_inc_itm_info_sub_map sb
+										  		where 1=1
+										  		 and a.inc_itm_id = sb.sub_inc_itm_id
+										  		 and b.inc_itm_id = sb.inc_itm_id
+										  		 and (b.lv_cl = 0 and ifnull(b.krw_yn, 'N') = 'Y')
+								               	 and a.inc_yy = SUBSTR(#{incYymm}, 1, 4)
+										 		 and a.def_cl = #{defCl}
+												 and b.del_yn = 'N'
+												 and a.bo_id in (
+													 select t.bo_id
+													   from tb_bo t
+													  where t.comp_id = #{compId}
+													   and t.bo_cl = 'H'
+													   and t.use_yn = 'Y'										 	
+								               		)						               		
+										 )a
+										 
+										where 1=1																 
+									
+									   union all
+									
+										<!-- 전년도 실적 -->
+																		
+										select d.acc_cl, d.inc_itm_id, d.pln_ret_cl, SUBSTR(#{incYymm}, 1, 4) as inc_yy, d.inc_yy as inc_yy_ly, d.bo_id, d.crncy_cd 
+									  		,null as mon_01_amt
+											,null as mon_02_amt
+											,null as mon_03_amt
+											,null as mon_04_amt
+											,null as mon_05_amt
+											,null as mon_06_amt
+											,null as mon_07_amt
+											,null as mon_08_amt
+											,null as mon_09_amt
+											,null as mon_10_amt
+											,null as mon_11_amt
+											,null as mon_12_amt
+											
+											, d.mon_01_amt as mon_01_amt_ly
+											, d.mon_02_amt as mon_02_amt_ly
+											, d.mon_03_amt as mon_03_amt_ly
+											, d.mon_04_amt as mon_04_amt_ly
+											, d.mon_05_amt as mon_05_amt_ly
+											, d.mon_06_amt as mon_06_amt_ly
+											, d.mon_07_amt as mon_07_amt_ly
+											, d.mon_08_amt as mon_08_amt_ly
+											, d.mon_09_amt as mon_09_amt_ly
+											, d.mon_10_amt as mon_10_amt_ly
+											, d.mon_11_amt as mon_11_amt_ly
+											, d.mon_12_amt as mon_12_amt_ly
+									  		
+									  	 from (
+									  	 		<!-- lv_cl=0 이고 krw='Y' 인 경우 제외 (-> 해당 손익집계는 현재 환율로 한화를 계산해야함) -->
+									  	 		select d.acc_cl, b.inc_itm_id, d.pln_ret_cl, d.inc_yy, d.bo_id, d.crncy_cd
+											  	 	, d.mon_01_amt
+													, d.mon_02_amt
+													, d.mon_03_amt
+													, d.mon_04_amt
+													, d.mon_05_amt
+													, d.mon_06_amt
+													, d.mon_07_amt
+													, d.mon_08_amt
+													, d.mon_09_amt
+													, d.mon_10_amt
+													, d.mon_11_amt
+													, d.mon_12_amt
+												from tb_bo_inc_agg d, tb_inc_itm_info b
+										  		where 1=1
+										  		 and d.inc_itm_id = b.inc_itm_id 
+										  		 and !(b.lv_cl = 0 and ifnull(b.krw_yn, 'N') = 'Y')
+										  		 and d.inc_yy = CAST(SUBSTR(#{incYymm}, 1, 4) AS SIGNED)-1
+										 		 and d.def_cl = #{defCl}
+										 		 and d.pln_ret_cl = 'R'								 		 
+												 and b.del_yn = 'N'
+												 and d.bo_id in (
+													 select t.bo_id
+													   from tb_bo t
+													  where t.comp_id = #{compId}
+													   and t.bo_cl = 'H'
+													   and t.use_yn = 'Y'										 	
+								               		)
+								               	
+								               union all
+								               
+								               <!-- lv_cl=0 이고 krw='Y' 인 경우 (-> 현재 환율로 한화를 계산해야함) -->
+								               select d.acc_cl, b.inc_itm_id, d.pln_ret_cl, d.inc_yy, d.bo_id, d.crncy_cd
+											  	 	, d.mon_01_amt * sb.frml_sign AS MON_01_AMT
+													, d.mon_02_amt * sb.frml_sign AS MON_02_AMT
+													, d.mon_03_amt * sb.frml_sign AS MON_03_AMT
+													, d.mon_04_amt * sb.frml_sign AS MON_04_AMT
+													, d.mon_05_amt * sb.frml_sign AS MON_05_AMT
+													, d.mon_06_amt * sb.frml_sign AS MON_06_AMT
+													, d.mon_07_amt * sb.frml_sign AS MON_07_AMT
+													, d.mon_08_amt * sb.frml_sign AS MON_08_AMT
+													, d.mon_09_amt * sb.frml_sign AS MON_09_AMT
+													, d.mon_10_amt * sb.frml_sign AS MON_10_AMT
+													, d.mon_11_amt * sb.frml_sign AS MON_11_AMT
+													, d.mon_12_amt * sb.frml_sign AS MON_12_AMT										
+								                from tb_bo_inc_agg d, tb_inc_itm_info b, vw_inc_itm_info_sub_map sb
+										  		where 1=1
+										  		 and d.inc_itm_id = sb.sub_inc_itm_id
+										  		 and b.inc_itm_id = sb.inc_itm_id
+										  		 and (b.lv_cl = 0 and ifnull(b.krw_yn, 'N') = 'Y')
+										  		 and d.inc_yy = CAST(SUBSTR(#{incYymm}, 1, 4) AS SIGNED)-1
+												 and d.def_cl = #{defCl}
+											     and d.pln_ret_cl = 'R'
+									  			 and d.bo_id in (
+													 select t.bo_id
+													   from tb_bo t
+													  where t.comp_id = #{compId}
+													   and t.bo_cl = 'H'
+													   and t.use_yn = 'Y'										 	
+								               		)
+									  	  ) d							  	 	
+									  	where 1=1	
+								  ) agg on agg.inc_itm_id = itm.inc_itm_id
+
+							 where itm.sal_agg_yn = 'Y'
+							  and itm.del_yn = 'N'
+							  and itm.lv_cl <![CDATA[ <= 2 ]]>
+							  and itm.comp_id = #{compId}
+							  and agg.bo_id is not null
+							<if test="incItm1 != null and incItm1 != ''">
+				              and itm.inc_itm1 = #{incItm1}			                     								              	
+							</if>							
+							
+							group by itm.inc_itm_id, itm.itm_nm, itm.inc_itm_id, itm.view_seq, itm.lv_cl, agg.inc_yy, agg.crncy_cd
+							
+						 union all
+							 
+						 <!-- 지역 --> 
+							select
+								f_get_commcd_nm(tcv.tccv_id, #{locale}) itm_nm
+								,itm.inc_itm_id
+																
+								,sum(if(agg.pln_ret_cl = 'R', @column:=agg.${currColNm}, null)) mon_curr_amt_r	
+								,sum(if(agg.pln_ret_cl = 'R' and CAST(SUBSTR(#{incYymm}, 5) AS SIGNED) >= 1, agg.mon_01_amt, null)) mon_01_amt_r
+								,sum(if(agg.pln_ret_cl = 'R' and CAST(SUBSTR(#{incYymm}, 5) AS SIGNED) >= 2, agg.mon_02_amt, null)) mon_02_amt_r
+								,sum(if(agg.pln_ret_cl = 'R' and CAST(SUBSTR(#{incYymm}, 5) AS SIGNED) >= 3, agg.mon_03_amt, null)) mon_03_amt_r
+								,sum(if(agg.pln_ret_cl = 'R' and CAST(SUBSTR(#{incYymm}, 5) AS SIGNED) >= 4, agg.mon_04_amt, null)) mon_04_amt_r
+								,sum(if(agg.pln_ret_cl = 'R' and CAST(SUBSTR(#{incYymm}, 5) AS SIGNED) >= 5, agg.mon_05_amt, null)) mon_05_amt_r
+								,sum(if(agg.pln_ret_cl = 'R' and CAST(SUBSTR(#{incYymm}, 5) AS SIGNED) >= 6, agg.mon_06_amt, null)) mon_06_amt_r
+								,sum(if(agg.pln_ret_cl = 'R' and CAST(SUBSTR(#{incYymm}, 5) AS SIGNED) >= 7, agg.mon_07_amt, null)) mon_07_amt_r
+								,sum(if(agg.pln_ret_cl = 'R' and CAST(SUBSTR(#{incYymm}, 5) AS SIGNED) >= 8, agg.mon_08_amt, null)) mon_08_amt_r
+								,sum(if(agg.pln_ret_cl = 'R' and CAST(SUBSTR(#{incYymm}, 5) AS SIGNED) >= 9, agg.mon_09_amt, null)) mon_09_amt_r
+								,sum(if(agg.pln_ret_cl = 'R' and CAST(SUBSTR(#{incYymm}, 5) AS SIGNED) >= 10, agg.mon_10_amt, null)) mon_10_amt_r
+								,sum(if(agg.pln_ret_cl = 'R' and CAST(SUBSTR(#{incYymm}, 5) AS SIGNED) >= 11, agg.mon_11_amt, null)) mon_11_amt_r
+								,sum(if(agg.pln_ret_cl = 'R' and CAST(SUBSTR(#{incYymm}, 5) AS SIGNED) >= 12, agg.mon_12_amt, null)) mon_12_amt_r
+								
+								,sum(if(agg.pln_ret_cl = 'P', @column:=agg.${currColNm}, null)) mon_curr_amt_p
+								,sum(if(agg.pln_ret_cl = 'P' and CAST(SUBSTR(#{incYymm}, 5) AS SIGNED) >= 1, agg.mon_01_amt, null)) mon_01_amt_p
+								,sum(if(agg.pln_ret_cl = 'P' and CAST(SUBSTR(#{incYymm}, 5) AS SIGNED) >= 2, agg.mon_02_amt, null)) mon_02_amt_p
+								,sum(if(agg.pln_ret_cl = 'P' and CAST(SUBSTR(#{incYymm}, 5) AS SIGNED) >= 3, agg.mon_03_amt, null)) mon_03_amt_p
+								,sum(if(agg.pln_ret_cl = 'P' and CAST(SUBSTR(#{incYymm}, 5) AS SIGNED) >= 4, agg.mon_04_amt, null)) mon_04_amt_p
+								,sum(if(agg.pln_ret_cl = 'P' and CAST(SUBSTR(#{incYymm}, 5) AS SIGNED) >= 5, agg.mon_05_amt, null)) mon_05_amt_p
+								,sum(if(agg.pln_ret_cl = 'P' and CAST(SUBSTR(#{incYymm}, 5) AS SIGNED) >= 6, agg.mon_06_amt, null)) mon_06_amt_p
+								,sum(if(agg.pln_ret_cl = 'P' and CAST(SUBSTR(#{incYymm}, 5) AS SIGNED) >= 7, agg.mon_07_amt, null)) mon_07_amt_p
+								,sum(if(agg.pln_ret_cl = 'P' and CAST(SUBSTR(#{incYymm}, 5) AS SIGNED) >= 8, agg.mon_08_amt, null)) mon_08_amt_p
+								,sum(if(agg.pln_ret_cl = 'P' and CAST(SUBSTR(#{incYymm}, 5) AS SIGNED) >= 9, agg.mon_09_amt, null)) mon_09_amt_p
+								,sum(if(agg.pln_ret_cl = 'P' and CAST(SUBSTR(#{incYymm}, 5) AS SIGNED) >= 10, agg.mon_10_amt, null)) mon_10_amt_p
+								,sum(if(agg.pln_ret_cl = 'P' and CAST(SUBSTR(#{incYymm}, 5) AS SIGNED) >= 11, agg.mon_11_amt, null)) mon_11_amt_p
+								,sum(if(agg.pln_ret_cl = 'P' and CAST(SUBSTR(#{incYymm}, 5) AS SIGNED) >= 12, agg.mon_12_amt, null)) mon_12_amt_p
+								
+								,sum(if(agg.pln_ret_cl = 'R', @column:=agg.${currColNmLy}, null)) mon_curr_amt_ly
+								,sum(if(agg.pln_ret_cl = 'R' and CAST(SUBSTR(#{incYymm}, 5) AS SIGNED) >= 1, agg.mon_01_amt_ly, null)) mon_01_amt_ly
+								,sum(if(agg.pln_ret_cl = 'R' and CAST(SUBSTR(#{incYymm}, 5) AS SIGNED) >= 2, agg.mon_02_amt_ly, null)) mon_02_amt_ly
+								,sum(if(agg.pln_ret_cl = 'R' and CAST(SUBSTR(#{incYymm}, 5) AS SIGNED) >= 3, agg.mon_03_amt_ly, null)) mon_03_amt_ly
+								,sum(if(agg.pln_ret_cl = 'R' and CAST(SUBSTR(#{incYymm}, 5) AS SIGNED) >= 4, agg.mon_04_amt_ly, null)) mon_04_amt_ly
+								,sum(if(agg.pln_ret_cl = 'R' and CAST(SUBSTR(#{incYymm}, 5) AS SIGNED) >= 5, agg.mon_05_amt_ly, null)) mon_05_amt_ly
+								,sum(if(agg.pln_ret_cl = 'R' and CAST(SUBSTR(#{incYymm}, 5) AS SIGNED) >= 6, agg.mon_06_amt_ly, null)) mon_06_amt_ly
+								,sum(if(agg.pln_ret_cl = 'R' and CAST(SUBSTR(#{incYymm}, 5) AS SIGNED) >= 7, agg.mon_07_amt_ly, null)) mon_07_amt_ly
+								,sum(if(agg.pln_ret_cl = 'R' and CAST(SUBSTR(#{incYymm}, 5) AS SIGNED) >= 8, agg.mon_08_amt_ly, null)) mon_08_amt_ly
+								,sum(if(agg.pln_ret_cl = 'R' and CAST(SUBSTR(#{incYymm}, 5) AS SIGNED) >= 9, agg.mon_09_amt_ly, null)) mon_09_amt_ly
+								,sum(if(agg.pln_ret_cl = 'R' and CAST(SUBSTR(#{incYymm}, 5) AS SIGNED) >= 10, agg.mon_10_amt_ly, null)) mon_10_amt_ly
+								,sum(if(agg.pln_ret_cl = 'R' and CAST(SUBSTR(#{incYymm}, 5) AS SIGNED) >= 10, agg.mon_11_amt_ly, null)) mon_11_amt_ly
+								,sum(if(agg.pln_ret_cl = 'R' and CAST(SUBSTR(#{incYymm}, 5) AS SIGNED) >= 12, agg.mon_12_amt_ly, null)) mon_12_amt_ly
+								
+								,itm.view_seq
+								,1 grp_lv
+								,itm.lv_cl
+								,bo.trrt_id
+								,'' pbo_id 
+								,'' bo_id
+								,agg.inc_yy
+								,agg.crncy_cd
+							from tb_inc_itm_info itm
+							 left join tb_bo bo on itm.comp_id = bo.comp_id and bo.bo_cl = 'H' and bo.use_yn = 'Y'
+							 left join tb_tcc_val tcv on bo.trrt_id = tcv.tccv_id
+							 left join (					
+								<!--  당해년도(실적/계획) -->
+								select a.acc_cl, a.inc_itm_id, a.pln_ret_cl, a.inc_yy, null as inc_yy_ly, a.bo_id, a.crncy_cd
+									, a.mon_01_amt
+									, a.mon_02_amt
+									, a.mon_03_amt
+									, a.mon_04_amt
+									, a.mon_05_amt
+									, a.mon_06_amt
+									, a.mon_07_amt
+									, a.mon_08_amt
+									, a.mon_09_amt
+									, a.mon_10_amt
+									, a.mon_11_amt
+									, a.mon_12_amt
+									
+									,null as mon_01_amt_ly
+									,null as mon_02_amt_ly
+									,null as mon_03_amt_ly
+									,null as mon_04_amt_ly
+									,null as mon_05_amt_ly
+									,null as mon_06_amt_ly
+									,null as mon_07_amt_ly
+									,null as mon_08_amt_ly
+									,null as mon_09_amt_ly
+									,null as mon_10_amt_ly
+									,null as mon_11_amt_ly
+									,null as mon_12_amt_ly									
+									
+								from (
+									 <!-- lv_cl=0 이고 krw='Y' 인 경우 제외 (-> 해당 손익집계는 현재 환율로 한화를 계산해야함) -->
+									  select a.acc_cl, b.inc_itm_id, a.pln_ret_cl, a.inc_yy, a.bo_id, a.crncy_cd
+								  			, a.mon_01_amt
+											, a.mon_02_amt
+											, a.mon_03_amt
+											, a.mon_04_amt
+											, a.mon_05_amt
+											, a.mon_06_amt
+											, a.mon_07_amt
+											, a.mon_08_amt
+											, a.mon_09_amt
+											, a.mon_10_amt
+											, a.mon_11_amt
+											, a.mon_12_amt
+								  		 from tb_bo_inc_agg a, tb_inc_itm_info b
+								  		where 1=1
+								  		 and a.inc_itm_id = b.inc_itm_id 
+								  		 and !(b.lv_cl = 0 and ifnull(b.krw_yn, 'N') = 'Y')
+								  		 and a.inc_yy = SUBSTR(#{incYymm}, 1, 4)
+								 		 and a.def_cl = #{defCl}
+										 and b.del_yn = 'N'
+										 and a.bo_id in (
+											 select t.bo_id
+											   from tb_bo t
+											  where t.comp_id = #{compId}
+											   and t.bo_cl = 'H'
+											   and t.use_yn = 'Y'										 	
+						               		)
+						               		
+						               union all
+						               
+						               <!-- lv_cl=0 이고 krw='Y' 인 경우 (-> 현재 환율로 한화를 계산해야함) -->
+						               select a.acc_cl, b.inc_itm_id, a.pln_ret_cl, a.inc_yy, a.bo_id, a.crncy_cd
+								  			, a.mon_01_amt * sb.frml_sign AS MON_01_AMT
+											, a.mon_02_amt * sb.frml_sign AS MON_02_AMT
+											, a.mon_03_amt * sb.frml_sign AS MON_03_AMT
+											, a.mon_04_amt * sb.frml_sign AS MON_04_AMT
+											, a.mon_05_amt * sb.frml_sign AS MON_05_AMT
+											, a.mon_06_amt * sb.frml_sign AS MON_06_AMT
+											, a.mon_07_amt * sb.frml_sign AS MON_07_AMT
+											, a.mon_08_amt * sb.frml_sign AS MON_08_AMT
+											, a.mon_09_amt * sb.frml_sign AS MON_09_AMT
+											, a.mon_10_amt * sb.frml_sign AS MON_10_AMT
+											, a.mon_11_amt * sb.frml_sign AS MON_11_AMT
+											, a.mon_12_amt * sb.frml_sign AS MON_12_AMT
+								  		 from tb_bo_inc_agg a, tb_inc_itm_info b, vw_inc_itm_info_sub_map sb
+								  		where 1=1
+								  		 and a.inc_itm_id = sb.sub_inc_itm_id
+								  		 and b.inc_itm_id = sb.inc_itm_id
+								  		 and (b.lv_cl = 0 and ifnull(b.krw_yn, 'N') = 'Y')
+						               	 and a.inc_yy = SUBSTR(#{incYymm}, 1, 4)
+								 		 and a.def_cl = #{defCl}
+										 and b.del_yn = 'N'
+										 and a.bo_id in (
+											 select t.bo_id
+											   from tb_bo t
+											  where t.comp_id = #{compId}
+											   and t.bo_cl = 'H'
+											   and t.use_yn = 'Y'										 	
+						               		)						               		
+								 )a
+								 
+								where 1=1																 
+							
+							   union all
+							
+								<!-- 전년도 실적 -->
+																
+								select d.acc_cl, d.inc_itm_id, d.pln_ret_cl, SUBSTR(#{incYymm}, 1, 4) as inc_yy, d.inc_yy as inc_yy_ly, d.bo_id, d.crncy_cd
+							  		,null as mon_01_amt
+									,null as mon_02_amt
+									,null as mon_03_amt
+									,null as mon_04_amt
+									,null as mon_05_amt
+									,null as mon_06_amt
+									,null as mon_07_amt
+									,null as mon_08_amt
+									,null as mon_09_amt
+									,null as mon_10_amt
+									,null as mon_11_amt
+									,null as mon_12_amt
+									
+									, d.mon_01_amt as mon_01_amt_ly
+									, d.mon_02_amt as mon_02_amt_ly
+									, d.mon_03_amt as mon_03_amt_ly
+									, d.mon_04_amt as mon_04_amt_ly
+									, d.mon_05_amt as mon_05_amt_ly
+									, d.mon_06_amt as mon_06_amt_ly
+									, d.mon_07_amt as mon_07_amt_ly
+									, d.mon_08_amt as mon_08_amt_ly
+									, d.mon_09_amt as mon_09_amt_ly
+									, d.mon_10_amt as mon_10_amt_ly
+									, d.mon_11_amt as mon_11_amt_ly
+									, d.mon_12_amt as mon_12_amt_ly
+							  		
+							  	 from (
+							  	 		<!-- lv_cl=0 이고 krw='Y' 인 경우 제외 (-> 해당 손익집계는 현재 환율로 한화를 계산해야함) -->
+							  	 		select d.acc_cl, b.inc_itm_id, d.pln_ret_cl, d.inc_yy, d.bo_id, d.crncy_cd
+									  	 	, d.mon_01_amt
+											, d.mon_02_amt
+											, d.mon_03_amt
+											, d.mon_04_amt
+											, d.mon_05_amt
+											, d.mon_06_amt
+											, d.mon_07_amt
+											, d.mon_08_amt
+											, d.mon_09_amt
+											, d.mon_10_amt
+											, d.mon_11_amt
+											, d.mon_12_amt
+										from tb_bo_inc_agg d, tb_inc_itm_info b
+								  		where 1=1
+								  		 and d.inc_itm_id = b.inc_itm_id 
+								  		 and !(b.lv_cl = 0 and ifnull(b.krw_yn, 'N') = 'Y')
+								  		 and d.inc_yy = CAST(SUBSTR(#{incYymm}, 1, 4) AS SIGNED)-1
+								 		 and d.def_cl = #{defCl}
+								 		 and d.pln_ret_cl = 'R'								 		 
+										 and b.del_yn = 'N'
+										 and d.bo_id in (
+											 select t.bo_id
+											   from tb_bo t
+											  where t.comp_id = #{compId}
+											   and t.bo_cl = 'H'
+											   and t.use_yn = 'Y'										 	
+						               		)
+						               	
+						               union all
+						               
+						               <!-- lv_cl=0 이고 krw='Y' 인 경우 (-> 현재 환율로 한화를 계산해야함) -->
+						               select d.acc_cl, b.inc_itm_id, d.pln_ret_cl, d.inc_yy, d.bo_id, d.crncy_cd
+									  	 	, d.mon_01_amt * sb.frml_sign AS MON_01_AMT
+											, d.mon_02_amt * sb.frml_sign AS MON_02_AMT
+											, d.mon_03_amt * sb.frml_sign AS MON_03_AMT
+											, d.mon_04_amt * sb.frml_sign AS MON_04_AMT
+											, d.mon_05_amt * sb.frml_sign AS MON_05_AMT
+											, d.mon_06_amt * sb.frml_sign AS MON_06_AMT
+											, d.mon_07_amt * sb.frml_sign AS MON_07_AMT
+											, d.mon_08_amt * sb.frml_sign AS MON_08_AMT
+											, d.mon_09_amt * sb.frml_sign AS MON_09_AMT
+											, d.mon_10_amt * sb.frml_sign AS MON_10_AMT
+											, d.mon_11_amt * sb.frml_sign AS MON_11_AMT
+											, d.mon_12_amt * sb.frml_sign AS MON_12_AMT				
+						                from tb_bo_inc_agg d, tb_inc_itm_info b, vw_inc_itm_info_sub_map sb
+								  		where 1=1
+								  		 and d.inc_itm_id = sb.sub_inc_itm_id
+								  		 and b.inc_itm_id = sb.inc_itm_id
+								  		 and (b.lv_cl = 0 and ifnull(b.krw_yn, 'N') = 'Y')
+								  		 and d.inc_yy = CAST(SUBSTR(#{incYymm}, 1, 4) AS SIGNED)-1
+										 and d.def_cl = #{defCl}
+									     and d.pln_ret_cl = 'R'
+							  			 and d.bo_id in (
+											 select t.bo_id
+											   from tb_bo t
+											  where t.comp_id = #{compId}
+											   and t.bo_cl = 'H'
+											   and t.use_yn = 'Y'										 	
+						               		)
+							  	  ) d							  	 	
+							  	where 1=1	
+						  	) agg on bo.bo_id = agg.bo_id and agg.inc_itm_id = itm.inc_itm_id						  
+							
+							 where itm.sal_agg_yn = 'Y'
+							  and (itm.lv_cl > 1 or itm.lv_cl = 0)
+							  and itm.comp_id = #{compId}
+							  and itm.del_yn = 'N'
+							  and agg.bo_id is not null
+							<if test="incItm1 != null and incItm1 != ''">
+				              and itm.inc_itm1 = #{incItm1}			                     								              	
+							</if>
+							group by itm.inc_itm_id, itm.itm_nm, itm.inc_itm_id, itm.view_seq, itm.lv_cl, agg.inc_yy, agg.crncy_cd, bo.trrt_id
+							
+							union all
+							
+							<!-- 법인 -->
+							select fn_get_bo_nm(bo.bo_id, #{locale}) as itm_nm
+								,itm.inc_itm_id
+								
+								,sum(if(agg.pln_ret_cl = 'R', @column:=agg.${currColNm}, null)) mon_curr_amt_r	
+								,sum(if(agg.pln_ret_cl = 'R' and CAST(SUBSTR(#{incYymm}, 5) AS SIGNED) >= 1, agg.mon_01_amt, null)) mon_01_amt_r
+								,sum(if(agg.pln_ret_cl = 'R' and CAST(SUBSTR(#{incYymm}, 5) AS SIGNED) >= 2, agg.mon_02_amt, null)) mon_02_amt_r
+								,sum(if(agg.pln_ret_cl = 'R' and CAST(SUBSTR(#{incYymm}, 5) AS SIGNED) >= 3, agg.mon_03_amt, null)) mon_03_amt_r
+								,sum(if(agg.pln_ret_cl = 'R' and CAST(SUBSTR(#{incYymm}, 5) AS SIGNED) >= 4, agg.mon_04_amt, null)) mon_04_amt_r
+								,sum(if(agg.pln_ret_cl = 'R' and CAST(SUBSTR(#{incYymm}, 5) AS SIGNED) >= 5, agg.mon_05_amt, null)) mon_05_amt_r
+								,sum(if(agg.pln_ret_cl = 'R' and CAST(SUBSTR(#{incYymm}, 5) AS SIGNED) >= 6, agg.mon_06_amt, null)) mon_06_amt_r
+								,sum(if(agg.pln_ret_cl = 'R' and CAST(SUBSTR(#{incYymm}, 5) AS SIGNED) >= 7, agg.mon_07_amt, null)) mon_07_amt_r
+								,sum(if(agg.pln_ret_cl = 'R' and CAST(SUBSTR(#{incYymm}, 5) AS SIGNED) >= 8, agg.mon_08_amt, null)) mon_08_amt_r
+								,sum(if(agg.pln_ret_cl = 'R' and CAST(SUBSTR(#{incYymm}, 5) AS SIGNED) >= 9, agg.mon_09_amt, null)) mon_09_amt_r
+								,sum(if(agg.pln_ret_cl = 'R' and CAST(SUBSTR(#{incYymm}, 5) AS SIGNED) >= 10, agg.mon_10_amt, null)) mon_10_amt_r
+								,sum(if(agg.pln_ret_cl = 'R' and CAST(SUBSTR(#{incYymm}, 5) AS SIGNED) >= 11, agg.mon_11_amt, null)) mon_11_amt_r
+								,sum(if(agg.pln_ret_cl = 'R' and CAST(SUBSTR(#{incYymm}, 5) AS SIGNED) >= 12, agg.mon_12_amt, null)) mon_12_amt_r
+								
+								,sum(if(agg.pln_ret_cl = 'P', @column:=agg.${currColNm}, null)) mon_curr_amt_p
+								,sum(if(agg.pln_ret_cl = 'P' and CAST(SUBSTR(#{incYymm}, 5) AS SIGNED) >= 1, agg.mon_01_amt, null)) mon_01_amt_p
+								,sum(if(agg.pln_ret_cl = 'P' and CAST(SUBSTR(#{incYymm}, 5) AS SIGNED) >= 2, agg.mon_02_amt, null)) mon_02_amt_p
+								,sum(if(agg.pln_ret_cl = 'P' and CAST(SUBSTR(#{incYymm}, 5) AS SIGNED) >= 3, agg.mon_03_amt, null)) mon_03_amt_p
+								,sum(if(agg.pln_ret_cl = 'P' and CAST(SUBSTR(#{incYymm}, 5) AS SIGNED) >= 4, agg.mon_04_amt, null)) mon_04_amt_p
+								,sum(if(agg.pln_ret_cl = 'P' and CAST(SUBSTR(#{incYymm}, 5) AS SIGNED) >= 5, agg.mon_05_amt, null)) mon_05_amt_p
+								,sum(if(agg.pln_ret_cl = 'P' and CAST(SUBSTR(#{incYymm}, 5) AS SIGNED) >= 6, agg.mon_06_amt, null)) mon_06_amt_p
+								,sum(if(agg.pln_ret_cl = 'P' and CAST(SUBSTR(#{incYymm}, 5) AS SIGNED) >= 7, agg.mon_07_amt, null)) mon_07_amt_p
+								,sum(if(agg.pln_ret_cl = 'P' and CAST(SUBSTR(#{incYymm}, 5) AS SIGNED) >= 8, agg.mon_08_amt, null)) mon_08_amt_p
+								,sum(if(agg.pln_ret_cl = 'P' and CAST(SUBSTR(#{incYymm}, 5) AS SIGNED) >= 9, agg.mon_09_amt, null)) mon_09_amt_p
+								,sum(if(agg.pln_ret_cl = 'P' and CAST(SUBSTR(#{incYymm}, 5) AS SIGNED) >= 10, agg.mon_10_amt, null)) mon_10_amt_p
+								,sum(if(agg.pln_ret_cl = 'P' and CAST(SUBSTR(#{incYymm}, 5) AS SIGNED) >= 11, agg.mon_11_amt, null)) mon_11_amt_p
+								,sum(if(agg.pln_ret_cl = 'P' and CAST(SUBSTR(#{incYymm}, 5) AS SIGNED) >= 12, agg.mon_12_amt, null)) mon_12_amt_p
+								
+								,sum(if(agg.pln_ret_cl = 'R', @column:=agg.${currColNmLy}, null)) mon_curr_amt_ly
+								,sum(if(agg.pln_ret_cl = 'R' and CAST(SUBSTR(#{incYymm}, 5) AS SIGNED) >= 1, agg.mon_01_amt_ly, null)) mon_01_amt_ly
+								,sum(if(agg.pln_ret_cl = 'R' and CAST(SUBSTR(#{incYymm}, 5) AS SIGNED) >= 2, agg.mon_02_amt_ly, null)) mon_02_amt_ly
+								,sum(if(agg.pln_ret_cl = 'R' and CAST(SUBSTR(#{incYymm}, 5) AS SIGNED) >= 3, agg.mon_03_amt_ly, null)) mon_03_amt_ly
+								,sum(if(agg.pln_ret_cl = 'R' and CAST(SUBSTR(#{incYymm}, 5) AS SIGNED) >= 4, agg.mon_04_amt_ly, null)) mon_04_amt_ly
+								,sum(if(agg.pln_ret_cl = 'R' and CAST(SUBSTR(#{incYymm}, 5) AS SIGNED) >= 5, agg.mon_05_amt_ly, null)) mon_05_amt_ly
+								,sum(if(agg.pln_ret_cl = 'R' and CAST(SUBSTR(#{incYymm}, 5) AS SIGNED) >= 6, agg.mon_06_amt_ly, null)) mon_06_amt_ly
+								,sum(if(agg.pln_ret_cl = 'R' and CAST(SUBSTR(#{incYymm}, 5) AS SIGNED) >= 7, agg.mon_07_amt_ly, null)) mon_07_amt_ly
+								,sum(if(agg.pln_ret_cl = 'R' and CAST(SUBSTR(#{incYymm}, 5) AS SIGNED) >= 8, agg.mon_08_amt_ly, null)) mon_08_amt_ly
+								,sum(if(agg.pln_ret_cl = 'R' and CAST(SUBSTR(#{incYymm}, 5) AS SIGNED) >= 9, agg.mon_09_amt_ly, null)) mon_09_amt_ly
+								,sum(if(agg.pln_ret_cl = 'R' and CAST(SUBSTR(#{incYymm}, 5) AS SIGNED) >= 10, agg.mon_10_amt_ly, null)) mon_10_amt_ly
+								,sum(if(agg.pln_ret_cl = 'R' and CAST(SUBSTR(#{incYymm}, 5) AS SIGNED) >= 10, agg.mon_11_amt_ly, null)) mon_11_amt_ly
+								,sum(if(agg.pln_ret_cl = 'R' and CAST(SUBSTR(#{incYymm}, 5) AS SIGNED) >= 12, agg.mon_12_amt_ly, null)) mon_12_amt_ly
+								
+								,itm.view_seq
+								,2 grp_lv
+								,itm.lv_cl
+								,bo.trrt_id
+								,bo.bo_id pbo_id
+								,'' bo_id
+								,agg.inc_yy
+								,agg.crncy_cd
+							from tb_inc_itm_info itm
+							 left join tb_bo bo on itm.comp_id = bo.comp_id and bo.bo_cl = 'H' and bo.use_yn = 'Y'
+							 left join tb_tcc_val tcv on bo.trrt_id = tcv.tccv_id
+							 left join (					
+									<!--  당해년도(실적/계획) -->
+									select a.acc_cl, a.inc_itm_id, a.pln_ret_cl, a.inc_yy, null as inc_yy_ly, a.bo_id, a.crncy_cd
+										, a.mon_01_amt
+										, a.mon_02_amt
+										, a.mon_03_amt
+										, a.mon_04_amt
+										, a.mon_05_amt
+										, a.mon_06_amt
+										, a.mon_07_amt
+										, a.mon_08_amt
+										, a.mon_09_amt
+										, a.mon_10_amt
+										, a.mon_11_amt
+										, a.mon_12_amt
+										
+										,null as mon_01_amt_ly
+										,null as mon_02_amt_ly
+										,null as mon_03_amt_ly
+										,null as mon_04_amt_ly
+										,null as mon_05_amt_ly
+										,null as mon_06_amt_ly
+										,null as mon_07_amt_ly
+										,null as mon_08_amt_ly
+										,null as mon_09_amt_ly
+										,null as mon_10_amt_ly
+										,null as mon_11_amt_ly
+										,null as mon_12_amt_ly									
+										
+									from (
+										 <!-- lv_cl=0 이고 krw='Y' 인 경우 제외 (-> 해당 손익집계는 현재 환율로 한화를 계산해야함) -->
+										  select a.acc_cl, b.inc_itm_id, a.pln_ret_cl, a.inc_yy, a.bo_id, a.crncy_cd
+									  			, a.mon_01_amt
+												, a.mon_02_amt
+												, a.mon_03_amt
+												, a.mon_04_amt
+												, a.mon_05_amt
+												, a.mon_06_amt
+												, a.mon_07_amt
+												, a.mon_08_amt
+												, a.mon_09_amt
+												, a.mon_10_amt
+												, a.mon_11_amt
+												, a.mon_12_amt
+									  		 from tb_bo_inc_agg a, tb_inc_itm_info b
+									  		where 1=1
+									  		 and a.inc_itm_id = b.inc_itm_id 
+									  		 and !(b.lv_cl = 0 and ifnull(b.krw_yn, 'N') = 'Y')
+									  		 and a.inc_yy = SUBSTR(#{incYymm}, 1, 4)
+									 		 and a.def_cl = #{defCl}
+											 and b.del_yn = 'N'
+											 and a.bo_id in (
+												 select t.bo_id
+												   from tb_bo t
+												  where t.comp_id = #{compId}
+												   and t.bo_cl = 'H'
+												   and t.use_yn = 'Y'										 	
+							               		)
+							               		
+							               union all
+							               
+							               <!-- lv_cl=0 이고 krw='Y' 인 경우 (-> 현재 환율로 한화를 계산해야함) -->
+							               select a.acc_cl, b.inc_itm_id, a.pln_ret_cl, a.inc_yy, a.bo_id, a.crncy_cd
+								                , a.mon_01_amt * sb.frml_sign AS MON_01_AMT
+												, a.mon_02_amt * sb.frml_sign AS MON_02_AMT
+												, a.mon_03_amt * sb.frml_sign AS MON_03_AMT
+												, a.mon_04_amt * sb.frml_sign AS MON_04_AMT
+												, a.mon_05_amt * sb.frml_sign AS MON_05_AMT
+												, a.mon_06_amt * sb.frml_sign AS MON_06_AMT
+												, a.mon_07_amt * sb.frml_sign AS MON_07_AMT
+												, a.mon_08_amt * sb.frml_sign AS MON_08_AMT
+												, a.mon_09_amt * sb.frml_sign AS MON_09_AMT
+												, a.mon_10_amt * sb.frml_sign AS MON_10_AMT
+												, a.mon_11_amt * sb.frml_sign AS MON_11_AMT
+												, a.mon_12_amt * sb.frml_sign AS MON_12_AMT
+												
+									  		 from tb_bo_inc_agg a, tb_inc_itm_info b, vw_inc_itm_info_sub_map sb
+									  		where 1=1
+									  		 and a.inc_itm_id = sb.sub_inc_itm_id
+									  		 and b.inc_itm_id = sb.inc_itm_id
+									  		 and (b.lv_cl = 0 and ifnull(b.krw_yn, 'N') = 'Y')
+							               	 and a.inc_yy = SUBSTR(#{incYymm}, 1, 4)
+									 		 and a.def_cl = #{defCl}
+											 and b.del_yn = 'N'
+											 and a.bo_id in (
+												 select t.bo_id
+												   from tb_bo t
+												  where t.comp_id = #{compId}
+												   and t.bo_cl = 'H'
+												   and t.use_yn = 'Y'										 	
+							               		)						               		
+									 ) a
+									 
+									where 1=1																 
+								
+								   union all
+								
+									<!-- 전년도 실적 -->
+																	
+									select d.acc_cl, d.inc_itm_id, d.pln_ret_cl, SUBSTR(#{incYymm}, 1, 4) as inc_yy, d.inc_yy as inc_yy_ly, d.bo_id, d.crncy_cd
+								  		,null as mon_01_amt
+										,null as mon_02_amt
+										,null as mon_03_amt
+										,null as mon_04_amt
+										,null as mon_05_amt
+										,null as mon_06_amt
+										,null as mon_07_amt
+										,null as mon_08_amt
+										,null as mon_09_amt
+										,null as mon_10_amt
+										,null as mon_11_amt
+										,null as mon_12_amt
+										
+										, d.mon_01_amt as mon_01_amt_ly
+										, d.mon_02_amt as mon_02_amt_ly
+										, d.mon_03_amt as mon_03_amt_ly
+										, d.mon_04_amt as mon_04_amt_ly
+										, d.mon_05_amt as mon_05_amt_ly
+										, d.mon_06_amt as mon_06_amt_ly
+										, d.mon_07_amt as mon_07_amt_ly
+										, d.mon_08_amt as mon_08_amt_ly
+										, d.mon_09_amt as mon_09_amt_ly
+										, d.mon_10_amt as mon_10_amt_ly
+										, d.mon_11_amt as mon_11_amt_ly
+										, d.mon_12_amt as mon_12_amt_ly
+								  		
+								  	 from (
+								  	 		<!-- lv_cl=0 이고 krw='Y' 인 경우 제외 (-> 해당 손익집계는 현재 환율로 한화를 계산해야함) -->
+								  	 		select d.acc_cl, b.inc_itm_id, d.pln_ret_cl, d.inc_yy, d.bo_id, d.crncy_cd
+										  	 	, d.mon_01_amt
+												, d.mon_02_amt
+												, d.mon_03_amt
+												, d.mon_04_amt
+												, d.mon_05_amt
+												, d.mon_06_amt
+												, d.mon_07_amt
+												, d.mon_08_amt
+												, d.mon_09_amt
+												, d.mon_10_amt
+												, d.mon_11_amt
+												, d.mon_12_amt
+											from tb_bo_inc_agg d, tb_inc_itm_info b
+									  		where 1=1
+									  		 and d.inc_itm_id = b.inc_itm_id 
+									  		 and !(b.lv_cl = 0 and ifnull(b.krw_yn, 'N') = 'Y')
+									  		 and d.inc_yy = CAST(SUBSTR(#{incYymm}, 1, 4) AS SIGNED)-1
+									 		 and d.def_cl = #{defCl}
+									 		 and d.pln_ret_cl = 'R'								 		 
+											 and b.del_yn = 'N'
+											 and d.bo_id in (
+												 select t.bo_id
+												   from tb_bo t
+												  where t.comp_id = #{compId}
+												   and t.bo_cl = 'H'
+												   and t.use_yn = 'Y'										 	
+							               		)
+							               	
+							               union all
+							               
+							               <!-- lv_cl=0 이고 krw='Y' 인 경우 (-> 현재 환율로 한화를 계산해야함) -->
+							               select d.acc_cl, b.inc_itm_id, d.pln_ret_cl, d.inc_yy, d.bo_id, d.crncy_cd
+												, d.mon_01_amt * sb.frml_sign AS MON_01_AMT
+												, d.mon_02_amt * sb.frml_sign AS MON_02_AMT
+												, d.mon_03_amt * sb.frml_sign AS MON_03_AMT
+												, d.mon_04_amt * sb.frml_sign AS MON_04_AMT
+												, d.mon_05_amt * sb.frml_sign AS MON_05_AMT
+												, d.mon_06_amt * sb.frml_sign AS MON_06_AMT
+												, d.mon_07_amt * sb.frml_sign AS MON_07_AMT
+												, d.mon_08_amt * sb.frml_sign AS MON_08_AMT
+												, d.mon_09_amt * sb.frml_sign AS MON_09_AMT
+												, d.mon_10_amt * sb.frml_sign AS MON_10_AMT
+												, d.mon_11_amt * sb.frml_sign AS MON_11_AMT
+												, d.mon_12_amt * sb.frml_sign AS MON_12_AMT
+																					
+							                from tb_bo_inc_agg d, tb_inc_itm_info b, vw_inc_itm_info_sub_map sb
+									  		where 1=1
+									  		 and d.inc_itm_id = sb.sub_inc_itm_id
+									  		 and b.inc_itm_id = sb.inc_itm_id
+									  		 and (b.lv_cl = 0 and ifnull(b.krw_yn, 'N') = 'Y')
+									  		 and d.inc_yy = CAST(SUBSTR(#{incYymm}, 1, 4) AS SIGNED)-1
+											 and d.def_cl = #{defCl}
+										     and d.pln_ret_cl = 'R'
+								  			 and d.bo_id in (
+												 select t.bo_id
+												   from tb_bo t
+												  where t.comp_id = #{compId}
+												   and t.bo_cl = 'H'
+												   and t.use_yn = 'Y'										 	
+							               		)
+								  	  ) d							  	 	
+								  	where 1=1	
+							  	) agg on bo.bo_id = agg.bo_id and agg.inc_itm_id = itm.inc_itm_id
+							 where itm.sal_agg_yn = 'Y'
+							 and (itm.lv_cl > 1 or itm.lv_cl = 0)
+							 and itm.comp_id = #{compId}
+							 and itm.del_yn = 'N'
+							 and agg.bo_id is not null
+							 
+						   <if test="incItm1 != null and incItm1 != ''">
+			             	 and itm.inc_itm1 = #{incItm1}			                     								              	
+						   </if>
+						   
+							group by itm.inc_itm_id, itm.itm_nm, itm.view_seq, itm.lv_cl, agg.inc_yy, agg.crncy_cd, bo.trrt_id, bo.bo_id
+							
+							union all
+							
+						 	<!-- 지점 -->
+							select fn_get_bo_nm(bo.bo_id, #{locale}) as itm_nm
+								,itm.inc_itm_id
+								
+								,sum(if(agg.pln_ret_cl = 'R', @column:=agg.${currColNm}, null)) mon_curr_amt_r	
+								,sum(if(agg.pln_ret_cl = 'R' and CAST(SUBSTR(#{incYymm}, 5) AS SIGNED) >= 1, agg.mon_01_amt, null)) mon_01_amt_r
+								,sum(if(agg.pln_ret_cl = 'R' and CAST(SUBSTR(#{incYymm}, 5) AS SIGNED) >= 2, agg.mon_02_amt, null)) mon_02_amt_r
+								,sum(if(agg.pln_ret_cl = 'R' and CAST(SUBSTR(#{incYymm}, 5) AS SIGNED) >= 3, agg.mon_03_amt, null)) mon_03_amt_r
+								,sum(if(agg.pln_ret_cl = 'R' and CAST(SUBSTR(#{incYymm}, 5) AS SIGNED) >= 4, agg.mon_04_amt, null)) mon_04_amt_r
+								,sum(if(agg.pln_ret_cl = 'R' and CAST(SUBSTR(#{incYymm}, 5) AS SIGNED) >= 5, agg.mon_05_amt, null)) mon_05_amt_r
+								,sum(if(agg.pln_ret_cl = 'R' and CAST(SUBSTR(#{incYymm}, 5) AS SIGNED) >= 6, agg.mon_06_amt, null)) mon_06_amt_r
+								,sum(if(agg.pln_ret_cl = 'R' and CAST(SUBSTR(#{incYymm}, 5) AS SIGNED) >= 7, agg.mon_07_amt, null)) mon_07_amt_r
+								,sum(if(agg.pln_ret_cl = 'R' and CAST(SUBSTR(#{incYymm}, 5) AS SIGNED) >= 8, agg.mon_08_amt, null)) mon_08_amt_r
+								,sum(if(agg.pln_ret_cl = 'R' and CAST(SUBSTR(#{incYymm}, 5) AS SIGNED) >= 9, agg.mon_09_amt, null)) mon_09_amt_r
+								,sum(if(agg.pln_ret_cl = 'R' and CAST(SUBSTR(#{incYymm}, 5) AS SIGNED) >= 10, agg.mon_10_amt, null)) mon_10_amt_r
+								,sum(if(agg.pln_ret_cl = 'R' and CAST(SUBSTR(#{incYymm}, 5) AS SIGNED) >= 11, agg.mon_11_amt, null)) mon_11_amt_r
+								,sum(if(agg.pln_ret_cl = 'R' and CAST(SUBSTR(#{incYymm}, 5) AS SIGNED) >= 12, agg.mon_12_amt, null)) mon_12_amt_r
+								
+								,sum(if(agg.pln_ret_cl = 'P', @column:=agg.${currColNm}, null)) mon_curr_amt_p
+								,sum(if(agg.pln_ret_cl = 'P' and CAST(SUBSTR(#{incYymm}, 5) AS SIGNED) >= 1, agg.mon_01_amt, null)) mon_01_amt_p
+								,sum(if(agg.pln_ret_cl = 'P' and CAST(SUBSTR(#{incYymm}, 5) AS SIGNED) >= 2, agg.mon_02_amt, null)) mon_02_amt_p
+								,sum(if(agg.pln_ret_cl = 'P' and CAST(SUBSTR(#{incYymm}, 5) AS SIGNED) >= 3, agg.mon_03_amt, null)) mon_03_amt_p
+								,sum(if(agg.pln_ret_cl = 'P' and CAST(SUBSTR(#{incYymm}, 5) AS SIGNED) >= 4, agg.mon_04_amt, null)) mon_04_amt_p
+								,sum(if(agg.pln_ret_cl = 'P' and CAST(SUBSTR(#{incYymm}, 5) AS SIGNED) >= 5, agg.mon_05_amt, null)) mon_05_amt_p
+								,sum(if(agg.pln_ret_cl = 'P' and CAST(SUBSTR(#{incYymm}, 5) AS SIGNED) >= 6, agg.mon_06_amt, null)) mon_06_amt_p
+								,sum(if(agg.pln_ret_cl = 'P' and CAST(SUBSTR(#{incYymm}, 5) AS SIGNED) >= 7, agg.mon_07_amt, null)) mon_07_amt_p
+								,sum(if(agg.pln_ret_cl = 'P' and CAST(SUBSTR(#{incYymm}, 5) AS SIGNED) >= 8, agg.mon_08_amt, null)) mon_08_amt_p
+								,sum(if(agg.pln_ret_cl = 'P' and CAST(SUBSTR(#{incYymm}, 5) AS SIGNED) >= 9, agg.mon_09_amt, null)) mon_09_amt_p
+								,sum(if(agg.pln_ret_cl = 'P' and CAST(SUBSTR(#{incYymm}, 5) AS SIGNED) >= 10, agg.mon_10_amt, null)) mon_10_amt_p
+								,sum(if(agg.pln_ret_cl = 'P' and CAST(SUBSTR(#{incYymm}, 5) AS SIGNED) >= 11, agg.mon_11_amt, null)) mon_11_amt_p
+								,sum(if(agg.pln_ret_cl = 'P' and CAST(SUBSTR(#{incYymm}, 5) AS SIGNED) >= 12, agg.mon_12_amt, null)) mon_12_amt_p
+								
+								,sum(if(agg.pln_ret_cl = 'R', @column:=agg.${currColNmLy}, null)) mon_curr_amt_ly
+								,sum(if(agg.pln_ret_cl = 'R' and CAST(SUBSTR(#{incYymm}, 5) AS SIGNED) >= 1, agg.mon_01_amt_ly, null)) mon_01_amt_ly
+								,sum(if(agg.pln_ret_cl = 'R' and CAST(SUBSTR(#{incYymm}, 5) AS SIGNED) >= 2, agg.mon_02_amt_ly, null)) mon_02_amt_ly
+								,sum(if(agg.pln_ret_cl = 'R' and CAST(SUBSTR(#{incYymm}, 5) AS SIGNED) >= 3, agg.mon_03_amt_ly, null)) mon_03_amt_ly
+								,sum(if(agg.pln_ret_cl = 'R' and CAST(SUBSTR(#{incYymm}, 5) AS SIGNED) >= 4, agg.mon_04_amt_ly, null)) mon_04_amt_ly
+								,sum(if(agg.pln_ret_cl = 'R' and CAST(SUBSTR(#{incYymm}, 5) AS SIGNED) >= 5, agg.mon_05_amt_ly, null)) mon_05_amt_ly
+								,sum(if(agg.pln_ret_cl = 'R' and CAST(SUBSTR(#{incYymm}, 5) AS SIGNED) >= 6, agg.mon_06_amt_ly, null)) mon_06_amt_ly
+								,sum(if(agg.pln_ret_cl = 'R' and CAST(SUBSTR(#{incYymm}, 5) AS SIGNED) >= 7, agg.mon_07_amt_ly, null)) mon_07_amt_ly
+								,sum(if(agg.pln_ret_cl = 'R' and CAST(SUBSTR(#{incYymm}, 5) AS SIGNED) >= 8, agg.mon_08_amt_ly, null)) mon_08_amt_ly
+								,sum(if(agg.pln_ret_cl = 'R' and CAST(SUBSTR(#{incYymm}, 5) AS SIGNED) >= 9, agg.mon_09_amt_ly, null)) mon_09_amt_ly
+								,sum(if(agg.pln_ret_cl = 'R' and CAST(SUBSTR(#{incYymm}, 5) AS SIGNED) >= 10, agg.mon_10_amt_ly, null)) mon_10_amt_ly
+								,sum(if(agg.pln_ret_cl = 'R' and CAST(SUBSTR(#{incYymm}, 5) AS SIGNED) >= 10, agg.mon_11_amt_ly, null)) mon_11_amt_ly
+								,sum(if(agg.pln_ret_cl = 'R' and CAST(SUBSTR(#{incYymm}, 5) AS SIGNED) >= 12, agg.mon_12_amt_ly, null)) mon_12_amt_ly
+								
+								,itm.view_seq
+								,3 grp_lv
+								,itm.lv_cl
+								,bo.trrt_id
+								,bo.pbo_id
+								,bo.bo_id
+								,agg.inc_yy
+								,agg.crncy_cd
+								
+							  from tb_inc_itm_info itm
+							left join tb_bo bo on itm.comp_id = bo.comp_id and bo.bo_cl = 'B' and bo.use_yn = 'Y'
+							left join tb_tcc_val tcv on bo.trrt_id = tcv.tccv_id
+							left join (					
+									<!--  당해년도(실적/계획) -->
+									select a.acc_cl, a.inc_itm_id, a.pln_ret_cl, a.inc_yy, null as inc_yy_ly, a.bo_id, a.crncy_cd
+										, a.mon_01_amt
+										, a.mon_02_amt
+										, a.mon_03_amt
+										, a.mon_04_amt
+										, a.mon_05_amt
+										, a.mon_06_amt
+										, a.mon_07_amt
+										, a.mon_08_amt
+										, a.mon_09_amt
+										, a.mon_10_amt
+										, a.mon_11_amt
+										, a.mon_12_amt
+										
+										,null as mon_01_amt_ly
+										,null as mon_02_amt_ly
+										,null as mon_03_amt_ly
+										,null as mon_04_amt_ly
+										,null as mon_05_amt_ly
+										,null as mon_06_amt_ly
+										,null as mon_07_amt_ly
+										,null as mon_08_amt_ly
+										,null as mon_09_amt_ly
+										,null as mon_10_amt_ly
+										,null as mon_11_amt_ly
+										,null as mon_12_amt_ly									
+										
+									from (
+										 <!-- lv_cl=0 이고 krw='Y' 인 경우 제외 (-> 해당 손익집계는 현재 환율로 한화를 계산해야함) -->
+										  select a.acc_cl, b.inc_itm_id, a.pln_ret_cl, a.inc_yy, a.bo_id, a.crncy_cd
+									  			, a.mon_01_amt
+												, a.mon_02_amt
+												, a.mon_03_amt
+												, a.mon_04_amt
+												, a.mon_05_amt
+												, a.mon_06_amt
+												, a.mon_07_amt
+												, a.mon_08_amt
+												, a.mon_09_amt
+												, a.mon_10_amt
+												, a.mon_11_amt
+												, a.mon_12_amt
+									  		 from tb_bo_inc_agg a, tb_inc_itm_info b
+									  		where 1=1
+									  		 and a.inc_itm_id = b.inc_itm_id 
+									  		 and !(b.lv_cl = 0 and ifnull(b.krw_yn, 'N') = 'Y')
+									  		 and a.inc_yy = SUBSTR(#{incYymm}, 1, 4)
+									 		 and a.def_cl = #{defCl}
+											 and b.del_yn = 'N'
+											 and a.bo_id in (
+												 select t.bo_id
+												   from tb_bo t
+												  where t.comp_id = #{compId}
+												   and t.bo_cl = 'B'
+												   and t.use_yn = 'Y'										 	
+							               		)
+							               		
+							               union all
+							               
+							               <!-- lv_cl=0 이고 krw='Y' 인 경우 (-> 현재 환율로 한화를 계산해야함) -->
+							               select a.acc_cl, b.inc_itm_id, a.pln_ret_cl, a.inc_yy, a.bo_id, a.crncy_cd
+									  			, a.mon_01_amt * sb.frml_sign AS MON_01_AMT
+												, a.mon_02_amt * sb.frml_sign AS MON_02_AMT
+												, a.mon_03_amt * sb.frml_sign AS MON_03_AMT
+												, a.mon_04_amt * sb.frml_sign AS MON_04_AMT
+												, a.mon_05_amt * sb.frml_sign AS MON_05_AMT
+												, a.mon_06_amt * sb.frml_sign AS MON_06_AMT
+												, a.mon_07_amt * sb.frml_sign AS MON_07_AMT
+												, a.mon_08_amt * sb.frml_sign AS MON_08_AMT
+												, a.mon_09_amt * sb.frml_sign AS MON_09_AMT
+												, a.mon_10_amt * sb.frml_sign AS MON_10_AMT
+												, a.mon_11_amt * sb.frml_sign AS MON_11_AMT
+												, a.mon_12_amt * sb.frml_sign AS MON_12_AMT
+									  		 from tb_bo_inc_agg a, tb_inc_itm_info b, vw_inc_itm_info_sub_map sb
+									  		where 1=1
+									  		 and a.inc_itm_id = sb.sub_inc_itm_id
+									  		 and b.inc_itm_id = sb.inc_itm_id
+									  		 and (b.lv_cl = 0 and ifnull(b.krw_yn, 'N') = 'Y')
+							               	 and a.inc_yy = SUBSTR(#{incYymm}, 1, 4)
+									 		 and a.def_cl = #{defCl}
+											 and b.del_yn = 'N'
+											 and a.bo_id in (
+												 select t.bo_id
+												   from tb_bo t
+												  where t.comp_id = #{compId}
+												   and t.bo_cl = 'B'
+												   and t.use_yn = 'Y'										 	
+							               		)						               		
+									 )a
+									 
+									where 1=1																 
+								
+								   union all
+								
+									<!-- 전년도 실적 -->
+																	
+									select d.acc_cl, d.inc_itm_id, d.pln_ret_cl, SUBSTR(#{incYymm}, 1, 4) as inc_yy, d.inc_yy as inc_yy_ly, d.bo_id, d.crncy_cd
+								  		,null as mon_01_amt
+										,null as mon_02_amt
+										,null as mon_03_amt
+										,null as mon_04_amt
+										,null as mon_05_amt
+										,null as mon_06_amt
+										,null as mon_07_amt
+										,null as mon_08_amt
+										,null as mon_09_amt
+										,null as mon_10_amt
+										,null as mon_11_amt
+										,null as mon_12_amt
+										
+										, d.mon_01_amt as mon_01_amt_ly
+										, d.mon_02_amt as mon_02_amt_ly
+										, d.mon_03_amt as mon_03_amt_ly
+										, d.mon_04_amt as mon_04_amt_ly
+										, d.mon_05_amt as mon_05_amt_ly
+										, d.mon_06_amt as mon_06_amt_ly
+										, d.mon_07_amt as mon_07_amt_ly
+										, d.mon_08_amt as mon_08_amt_ly
+										, d.mon_09_amt as mon_09_amt_ly
+										, d.mon_10_amt as mon_10_amt_ly
+										, d.mon_11_amt as mon_11_amt_ly
+										, d.mon_12_amt as mon_12_amt_ly
+								  		
+								  	 from (
+								  	 		<!-- lv_cl=0 이고 krw='Y' 인 경우 제외 (-> 해당 손익집계는 현재 환율로 한화를 계산해야함) -->
+								  	 		select d.acc_cl, b.inc_itm_id, d.pln_ret_cl, d.inc_yy, d.bo_id, d.crncy_cd
+										  	 	, d.mon_01_amt
+												, d.mon_02_amt
+												, d.mon_03_amt
+												, d.mon_04_amt
+												, d.mon_05_amt
+												, d.mon_06_amt
+												, d.mon_07_amt
+												, d.mon_08_amt
+												, d.mon_09_amt
+												, d.mon_10_amt
+												, d.mon_11_amt
+												, d.mon_12_amt
+											from tb_bo_inc_agg d, tb_inc_itm_info b
+									  		where 1=1
+									  		 and d.inc_itm_id = b.inc_itm_id 
+									  		 and !(b.lv_cl = 0 and ifnull(b.krw_yn, 'N') = 'Y')
+									  		 and d.inc_yy = CAST(SUBSTR(#{incYymm}, 1, 4) AS SIGNED)-1
+									 		 and d.def_cl = #{defCl}
+									 		 and d.pln_ret_cl = 'R'								 		 
+											 and b.del_yn = 'N'
+											 and d.bo_id in (
+												 select t.bo_id
+												   from tb_bo t
+												  where t.comp_id = #{compId}
+												   and t.bo_cl = 'B'
+												   and t.use_yn = 'Y'										 	
+							               		)
+							               	
+							               union all
+							               
+							               <!-- lv_cl=0 이고 krw='Y' 인 경우 (-> 현재 환율로 한화를 계산해야함) -->
+							               select d.acc_cl, b.inc_itm_id, d.pln_ret_cl, d.inc_yy, d.bo_id, d.crncy_cd
+										  	 	, d.mon_01_amt * sb.frml_sign AS MON_01_AMT
+												, d.mon_02_amt * sb.frml_sign AS MON_02_AMT
+												, d.mon_03_amt * sb.frml_sign AS MON_03_AMT
+												, d.mon_04_amt * sb.frml_sign AS MON_04_AMT
+												, d.mon_05_amt * sb.frml_sign AS MON_05_AMT
+												, d.mon_06_amt * sb.frml_sign AS MON_06_AMT
+												, d.mon_07_amt * sb.frml_sign AS MON_07_AMT
+												, d.mon_08_amt * sb.frml_sign AS MON_08_AMT
+												, d.mon_09_amt * sb.frml_sign AS MON_09_AMT
+												, d.mon_10_amt * sb.frml_sign AS MON_10_AMT
+												, d.mon_11_amt * sb.frml_sign AS MON_11_AMT
+												, d.mon_12_amt * sb.frml_sign AS MON_12_AMT				
+																	
+							                from tb_bo_inc_agg d, tb_inc_itm_info b, vw_inc_itm_info_sub_map sb
+									  		where 1=1
+									  		 and d.inc_itm_id = sb.sub_inc_itm_id
+									  		 and b.inc_itm_id = sb.inc_itm_id
+									  		 and (b.lv_cl = 0 and ifnull(b.krw_yn, 'N') = 'Y')
+									  		 and d.inc_yy = CAST(SUBSTR(#{incYymm}, 1, 4) AS SIGNED)-1
+											 and d.def_cl = #{defCl}
+										     and d.pln_ret_cl = 'R'
+								  			 and d.bo_id in (
+												 select t.bo_id
+												   from tb_bo t
+												  where t.comp_id = #{compId}
+												   and t.bo_cl = 'B'
+												   and t.use_yn = 'Y'										 	
+							               		)
+								  	  ) d							  	 	
+								  	where 1=1	
+							  	) agg on bo.bo_id = agg.bo_id and agg.inc_itm_id = itm.inc_itm_id
+							where itm.sal_agg_yn = 'Y'
+							 and bo.bo_id = agg.bo_id
+							 and (itm.lv_cl > 1 or itm.lv_cl = 0)
+							 and itm.comp_id = #{compId}
+							 and itm.del_yn = 'N'
+							 and agg.bo_id is not null
+							 
+						   <if test="incItm1 != null and incItm1 != ''">
+			             	 and itm.inc_itm1 = #{incItm1}			                     								              	
+						   </if>
+							 
+						 group by itm.inc_itm_id, itm.itm_nm, itm.view_seq, itm.lv_cl, agg.inc_yy, agg.crncy_cd, bo.trrt_id, bo.bo_id
+							
+						) t				
+						
+					 group by fn_edit_itm_nm(t.grp_lv+t.lv_cl, LTRIM(t.itm_nm), ''), (t.grp_lv+t.lv_cl), t.inc_itm_id, t.itm_nm, t.view_seq, t.inc_yy, t.trrt_id, t.pbo_id, t.bo_id, t.crncy_cd
+				
+				 ) t
+				 left join vw_exchg_rate_yy_ret c on t.crncy_cd = c.crncy_cd and t.inc_yy = c.yyyy
+				 left join vw_exchg_rate_yy_ret c2 on t.crncy_cd = c2.crncy_cd and c2.yyyy = CAST(t.inc_yy AS SIGNED)-1
+				 
+				 left join vw_exchg_rate_yy_pln cp on t.crncy_cd = cp.crncy_cd and t.inc_yy = cp.yyyy
+				 
+				group by t.itm_nm, t.inc_itm_id, t.trrt_id, t.pbo_id, t.bo_id, t.lv_cl, t.view_seq
+				
+	  		order by t.inc_itm_id, t.trrt_id, t.pbo_id, t.bo_id, t.lv_cl, t.view_seq
+		 ) t
+
+  	</select>
+  	
+  	
+  	<!-- 당월실적 조회용 항목리스트 -->
+  	<select id="selectItemInfoList" resultType="com.lgl.gms.webapi.inc.dto.response.IncItmInfoResponse" >
+	   select inc_itm_id
+		 	, if(#{locale} = 'ko', inc_itm1, inc_itm1_eng) as itm_nm
+		from tb_inc_itm_info
+		where sal_agg_yn = 'Y'
+		  and del_yn = 'N'
+		  and lv_cl = 1
+		group by inc_itm_id, inc_itm1
+	   order by view_seq 
+    </select>
+
+
+
+  	
+</mapper>
+
+

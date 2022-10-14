@@ -1,0 +1,71 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper
+    PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+    "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="com.lgl.gms.webapi.sample.persistence.dao.FileDao">
+
+
+<!-- File 정보처리 시작  -->
+  	<resultMap id="FileMap" type="com.lgl.gms.webapi.sample.persistence.model.FileModel">
+	    <id column="id" jdbcType="VARCHAR" property="id" />
+	    <result column="filename" jdbcType="VARCHAR" property="filename" />
+	    <result column="filepath" jdbcType="VARCHAR" property="filepath" />
+	    <result column="orgname" jdbcType="VARCHAR" property="orgname" />
+	    <result column="ext" jdbcType="VARCHAR" property="ext" />
+	    <result column="created_dt" jdbcType="TIMESTAMP" property="createdDt" />
+	    <result column="updated_dt" jdbcType="TIMESTAMP" property="updatedDt" />
+	</resultMap>
+
+  	<!-- 파일 정보가져오기  -->
+	<select id="selectFileInfo" resultMap="FileMap" parameterType="java.lang.String">
+		SELECT id, filename, filepath, ext, orgname, created_dt
+		FROM tb_test_file WHERE id = #{id}
+  	</select>
+
+  	<!-- 파일 추가  -->
+   	<insert id="insertFileInfo" parameterType="com.lgl.gms.webapi.sample.persistence.model.FileModel">
+   		insert into tb_test_file
+		(filename, ext, filepath, orgname)
+		values(#{filename},#{ext},#{filepath}, #{orgname})
+		<selectKey keyProperty="id" resultType="Integer">
+       		SELECT LAST_INSERT_ID()
+   		</selectKey>
+  	</insert>
+
+  	<!-- 파일 정보업데이트  -->
+  	<update id="updateFileInfo" parameterType="com.lgl.gms.webapi.sample.persistence.model.FileModel">
+   		update tb_test_file
+   		<set>
+   		 	updated_dt = now()
+		    <if test="filename!=null">,filename=#{filename}</if>
+		    <if test="ext!=null">,ext=#{ext}</if>
+		    <if test="orgname!=null">,orgname=#{orgname}</if>
+		    <if test="filepath!=null">,filepath=#{filepath}</if>
+		</set>
+		where id=#{id}
+  	</update>
+
+  	<!-- 파일 삭제  -->
+  	<update id="deleteFile"  parameterType="java.util.HashMap">
+		delete from tb_test_file where ID =#{id}
+  	</update>
+
+  	<!-- 파일 리스트 가져오기  -->
+  	<select id="selectFileListCount" resultType="Integer" parameterType="java.util.HashMap">
+		SELECT count(id)
+		FROM tb_test_file
+  	</select>
+  	<select id="selectFileList" resultType="java.util.HashMap" parameterType="java.util.HashMap">
+		SELECT * FROM (
+			SELECT (ROW_NUMBER() over()) as idx, id, filepath, filename, orgname, created_dt
+			FROM tb_test_file
+			ORDER BY created_dt DESC
+		) a
+		WHERE a.idx >#{stIdx} and #{edIdx}>=a.idx
+  	</select>
+
+
+</mapper>
+
+

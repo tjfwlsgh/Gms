@@ -1,0 +1,91 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+ 	@FileName    : FileMgmtMapper.xml
+	@Date        : 2022.06.21
+ 	@Author      : jokim
+ 	@Description : DB Query Mapper xml
+ 	@History     : 파일관리 Mapper
+ -->
+<!DOCTYPE mapper
+    PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+    "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+    
+<mapper namespace="com.lgl.gms.webapi.bse.persistence.dao.S3ObjectInfoDao">
+
+	<!-- S2 오브젝트 정보 조회 -->
+	<select id="selectS3ObjInfoList" resultType="com.lgl.gms.webapi.bse.dto.response.S3ObjInfoResponse"  parameterType="com.lgl.gms.webapi.bse.dto.request.S3ObjInfoRequest"> 
+		select @ROWNUM := @ROWNUM + 1 as no
+			 ,obj_id
+			 ,if(#{locale} = 'ko', obj_nm, obj_nm_eng) obj_nm
+			 ,obj_nm as obj_nm_kr
+			 ,obj_nm_eng
+			 ,obj_det
+			 ,obj_val
+			 ,view_seq
+			 ,use_yn
+			 ,reg_no
+			 ,reg_dt
+			 ,upd_dt
+			 ,upd_no
+			 ,work_ip
+			 ,use_lng
+		from tb_s3_obj_info, (SELECT @rownum:=0) TMP
+		where comp_id = #{compId}
+	   order by view_seq
+	</select>
+	
+	
+	<!-- S3 오브젝트 정보 머지 -->
+  	<update id="mergeS3ObjInfo" parameterType="com.lgl.gms.webapi.bse.persistence.model.S3ObjInfoModel">
+		
+		insert into tb_s3_obj_info (
+			 obj_id
+			,obj_nm
+		 	,obj_nm_eng
+		 	,obj_det
+			,obj_val
+			,view_seq
+			,use_yn
+			,reg_no
+			,reg_dt
+			,upd_dt
+			,upd_no
+			,work_ip
+			,use_lng
+			,comp_id
+		) 
+		values (
+           (ifnull(#{objId}, (select max(t1.obj_id)+1 from tb_s3_obj_info t1)))
+           	,#{objNm}
+			,#{objNmEng}
+			,#{objDet}
+			,#{objVal}
+			,#{viewSeq}
+			,#{useYn}
+			,#{regNo}
+			,#{regDt}
+			,#{updDt}
+			,#{updNo}
+			,#{workIp}
+			,#{useLng}
+			,#{compId}
+		  )
+		ON DUPLICATE KEY UPDATE
+			upd_dt = now()
+			,upd_no = #{updNo}
+		 <if test="objNm !=null and objNm != ''">, obj_nm = #{objNm}</if>
+		 <if test="objNmEng !=null and objNmEng != ''">, obj_nm_eng = #{objNmEng}</if>
+		 <if test="objVal !=null and objVal != ''">, obj_val = #{objVal}</if>
+		 <if test="objDet !=null and objDet != ''">, obj_det = #{objDet}</if>
+		 <if test="useYn !=null and useYn != ''">, use_yn = #{useYn}</if>
+		 <if test="viewSeq !=null and viewSeq != ''">, view_seq = #{viewSeq}</if>
+
+  	</update>
+  	
+  	<!-- S3 object 정보 삭제 -->
+  	<delete  id="deleteS3ObjInfo" parameterType="com.lgl.gms.webapi.bse.dto.request.S3ObjInfoRequest">
+  		delete from tb_s3_obj_info
+		where obj_id = #{objId} 
+  	</delete>
+
+</mapper>

@@ -1,0 +1,134 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+ 	@FileName    : BseBoCustMapper.xml
+	@Date        : 22.03.28
+ 	@Author      : hj.Chung
+ 	@Description : DB Query Mapper xml
+ 	@History     : 법인-거래처 관리 Mapper
+ -->
+<!DOCTYPE mapper
+    PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+    "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+    
+<mapper namespace="com.lgl.gms.webapi.bse.persistence.dao.BseBoCustMgmtDao">
+	<!-- 법인 거래처 관리 조회 -->
+	<select id="selectBoCustMgmtList" resultType="com.lgl.gms.webapi.bse.dto.response.BseBoCustMgmtResponse" parameterType="com.lgl.gms.webapi.bse.dto.request.BseBoCustMgmtRequest"> 
+		select a.bo_id
+			 , ifnull(b.pbo_id, b.bo_id) as pbo_id
+			 , if(b.bo_cl = 'H'
+		     		, if(#{locale} = 'ko', b.bo_nm, b.bo_nm_eng)
+		     		, (select if(#{locale} = 'ko', t.bo_nm, t.bo_nm_eng)  
+		     		   from tb_bo t 
+		     		   where b.pbo_id = t.bo_id)) bo_nm_h		
+		     , if(b.bo_cl = 'B', if(#{locale} = 'ko', b.bo_nm, b.bo_nm_eng), '') sub_bo_nm
+			 , a.bo_cust_cd
+			 , a.cust_nm
+			 , a.cust_snm
+			 , a.cust_nm_eng
+			 , a.cust_snm_eng
+			 , a.del_yn
+			 , a.reg_dt
+			 , a.upd_dt
+			 , a.work_ip
+			 , a.reg_no
+			 , a.upd_no
+		from tb_bo_cust a
+		left join tb_bo b on (a.bo_id = b.bo_id)
+		where 1 = 1
+			<if test="boId != null and boId != ''">
+				<if test="subBoId != null and subBoId != ''">and a.bo_id = #{subBoId}</if>
+				<if test="subBoId == null or subBoId == ''">and (a.bo_id = #{boId} or b.pbo_id = #{boId}) </if>
+			</if>
+			<if test="custNm != null and custNm != ''">and replace(a.cust_nm, ' ', '') like replace(concat('%', #{custNm}, '%'), ' ', '')</if>
+			<if test="delYn != null and delYn != ''">and a.del_yn = #{delYn}</if>
+		order by ifnull(b.pbo_id, b.bo_id), a.bo_id, a.bo_cust_cd, a.cust_nm
+	</select>
+	
+	<select id="selectBoCustByIdAndCd" resultType="com.lgl.gms.webapi.bse.dto.response.BseBoCustMgmtResponse" parameterType="com.lgl.gms.webapi.bse.dto.request.BseBoCustMgmtRequest"> 
+		select bo_id
+			 , bo_cust_cd
+			 , cust_nm
+			 , cust_snm
+			 , cust_nm_eng
+			 , cust_snm_eng
+			 , del_yn
+			 , reg_dt
+			 , upd_dt
+			 , work_ip
+			 , reg_no
+			 , upd_no
+		from tb_bo_cust 
+		where bo_cust_cd = #{boCustCd}
+		  and bo_id = #{boId}
+	</select>
+	
+	<!-- 거래처 코드 여부 -->
+	<select id="checkSelectBoCd" resultType="com.lgl.gms.webapi.bse.persistence.model.BseBoCustModel" parameterType="com.lgl.gms.webapi.bse.dto.request.BseBoCustMgmtRequest"> 
+		select bo_id
+			 , bo_cust_cd
+			 , cust_nm
+			 , cust_snm
+			 , cust_nm_eng
+			 , cust_snm_eng
+			 , del_yn
+			 , reg_dt
+			 , upd_dt
+			 , work_ip
+			 , reg_no
+			 , upd_no
+		from tb_bo_cust 
+		where bo_cust_cd = #{boCustCd}
+		  and bo_id = #{boId}
+		  and del_yn = 'N'
+	</select>
+	
+	<!-- 법인 거래처 관리 row 추가 -->
+	<insert id="insertBoCustMgmt" parameterType="com.lgl.gms.webapi.bse.persistence.model.BseBoCustModel">
+		insert into tb_bo_cust
+				(
+				  bo_id
+				, bo_cust_cd
+				, cust_nm, cust_snm
+				, cust_nm_eng, cust_snm_eng
+				, del_yn
+				, work_ip, reg_no, reg_dt
+				)
+		values (
+				  #{boId}
+				, #{boCustCd}
+				, #{custNm}, #{custSnm}
+				, #{custNmEng}, #{custSnmEng}
+				, #{delYn}
+				, #{workIp}, #{regNo}, #{regDt}
+				)
+	</insert>
+	
+	<!-- 법인 거래처 관리 삭제여부 변경 -->
+	<update id="deleteBoCustMgmt" parameterType="java.util.HashMap">
+	 	update tb_bo_cust 
+	 	set del_yn = 'Y'
+	 	  , upd_dt = now() 
+	 	  , upd_no = #{updNo}
+	 	  , work_ip = #{workIp}
+	 	where bo_id = #{boId} 
+	 	  and bo_cust_cd = #{boCustCd}
+	</update>
+	
+	<!-- 법인 거래처 관리 수정 -->
+	<update id="updateBoCustMgmt" parameterType="com.lgl.gms.webapi.bse.persistence.model.BseBoCustModel">
+	 	update tb_bo_cust 
+	 	<set>
+	 		upd_dt = now() 
+	 	  , upd_no = #{updNo}
+	 	  , work_ip = #{workIp}
+	 	  , cust_snm = #{custSnm}
+	 	  , cust_nm_eng = #{custNmEng}
+	 	  , cust_snm_eng = #{custSnmEng}
+	 	  , bo_cust_cd = #{boCustCd}
+	 	  <if test="custNm != null and custNm != ''">, cust_nm = #{custNm}</if>
+	 	</set>
+	 	where bo_id = #{boId} 
+	 	  and bo_cust_cd = #{boCustCd}
+	</update>
+
+</mapper>

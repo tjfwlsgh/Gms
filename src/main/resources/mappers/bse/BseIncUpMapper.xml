@@ -1,0 +1,192 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+ 	@FileName    : BseIncUpMapper.xml
+	@Date        : 22.07.18
+ 	@Author      : hj.Chung
+ 	@Description : DB Query Mapper xml
+ 	@History     : 손익 데이터 업로드 현황 Controller
+ -->
+<!DOCTYPE mapper
+    PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+    "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+    
+<mapper namespace="com.lgl.gms.webapi.bse.persistence.dao.BseIncUpDao">
+	
+	<!-- 실적 조회 -->
+	<select id="selectIncRetList" resultType="com.lgl.gms.webapi.bse.dto.response.BseIncUpResponse" parameterType="com.lgl.gms.webapi.bse.dto.request.BseIncUpRequest"> 
+		SELECT
+		    X2.TRRT_ID
+		   , f_get_commcd_nm(X2.TRRT_ID, #{locale}) AS TRRT_NM
+			,X1.bo_id
+			, CASE WHEN X2.pbo_id IS NULL THEN
+				 fn_get_bo_nm(X2.bo_id, #{locale})
+			  ELSE
+				 fn_get_bo_nm(X2.pbo_id, #{locale})
+			  END AS bo_nm_h
+			, CASE WHEN X2.pbo_id IS NULL THEN
+				 NULL
+			  ELSE
+				 fn_get_bo_nm(X2.bo_id, #{locale})
+			  END AS sub_bo_nm
+			,X1.LST_INC_YYMM
+			,X1.LST_DEF_CL
+			,X1.CNT1
+			,X1.CNT2
+			, DATE_FORMAT(DATE_ADD(X1.LST_REG_DT1, INTERVAL b.std_var MINUTE), '%Y-%m-%d %H:%i:%s') AS LST_REG_DT1
+			, DATE_FORMAT(DATE_ADD(X1.LST_REG_DT2 , INTERVAL b.std_var MINUTE), '%Y-%m-%d %H:%i:%s') AS LST_REG_DT2 
+		FROM (
+			SELECT X.bo_id
+					,X.LST_INC_YYMM
+					,X.LST_DEF_CL
+					,COUNT(Y.BO_ID) AS CNT1
+					,COUNT(Z.BO_ID) AS CNT2
+					,MAX(Y.REG_DT) AS LST_REG_DT1
+					,MAX(Z.REG_DT) AS LST_REG_DT2
+			FROM (
+				SELECT a.bo_id
+				, MAX(a.INC_YYMM) AS LST_INC_YYMM
+				, MAX(a.DEF_CL) AS LST_DEF_CL
+				FROM tb_bo_inc_ret a
+				WHERE a.INC_YYMM <![CDATA[>=]]> #{yymm} - 300 
+				GROUP BY a.bo_id
+			) X
+			LEFT JOIN tb_bo_inc_ret_sal Y
+			  ON  Y.BO_ID   	= X.BO_ID
+			  AND Y.INC_YYMM  = X.LST_INC_YYMM
+			  AND Y.DEF_CL    = X.LST_DEF_CL
+			LEFT JOIN tb_bo_inc_ret_exp Z
+			  ON  Z.BO_ID   	= X.BO_ID
+			  AND Z.INC_YYMM  = X.LST_INC_YYMM
+			  AND Z.DEF_CL    = X.LST_DEF_CL
+			GROUP BY  
+			 X.bo_id
+			,X.LST_INC_YYMM 
+			,X.LST_DEF_CL
+		) X1
+		INNER JOIN tb_bo X2
+		  ON X2.bo_NM <![CDATA[<>]]> '본사'
+		  	and X2.bo_id = X1.bo_id
+		  <if test="boId != null and boId != ''">
+		  	AND (x2.bo_id = #{boId} OR x2.pbo_id = #{boId})
+		  </if>
+		  <if test="trrtId != null and trrtId != ''">
+			  AND X2.TRRT_ID = #{trrtId}
+		  </if>
+		 LEFT JOIN tb_time_zone b 
+			  	   ON (b.cntry_cd = 'KR')
+		ORDER BY X2.TRRT_ID, 3, 4
+	</select>
+	
+	<!-- 계획 조회 -->
+	<select id="selectIncPlnList" resultType="com.lgl.gms.webapi.bse.dto.response.BseIncUpResponse" parameterType="com.lgl.gms.webapi.bse.dto.request.BseIncUpRequest"> 
+		SELECT
+		    X2.TRRT_ID
+		   , f_get_commcd_nm(X2.TRRT_ID, #{locale}) AS TRRT_NM
+			,X1.bo_id
+			, CASE WHEN X2.pbo_id IS NULL THEN
+				 fn_get_bo_nm(X2.bo_id, #{locale})
+			  ELSE
+				 fn_get_bo_nm(X2.pbo_id, #{locale})
+			  END AS bo_nm_h
+			, CASE WHEN X2.pbo_id IS NULL THEN
+				 NULL
+			  ELSE
+				 fn_get_bo_nm(X2.bo_id, #{locale})
+			  END AS sub_bo_nm
+			,X1.LST_INC_YYMM
+			,X1.LST_DEF_CL
+			,X1.CNT1
+			,X1.CNT2
+			,X1.LST_REG_DT1
+			,X1.LST_REG_DT2 
+		FROM (
+			SELECT 	
+				t1.bo_id
+				,t1.LST_INC_YYMM
+				,t1.LST_DEF_CL
+				,SUM(t1.CNT1) AS CNT1
+				,SUM(t1.CNT2) AS CNT2
+				,MAX(t1.LST_REG_DT1) AS LST_REG_DT1 
+				,MAX(t1.LST_REG_DT2) AS LST_REG_DT2 
+			FROM (
+				SELECT X.bo_id
+					,X.LST_INC_YYMM
+					,X.LST_DEF_CL
+					,COUNT(Y.BO_ID) AS CNT1
+					,0 AS CNT2
+					,MAX(Y.REG_DT) AS LST_REG_DT1
+					,'' AS LST_REG_DT2
+				FROM (
+					SELECT a.bo_id
+					, MAX(a.INC_YY) AS LST_INC_YYMM
+					, 'Q1' AS LST_DEF_CL
+					FROM tb_bo_inc_pln a
+					WHERE a.INC_YY <![CDATA[>=]]> #{yymm} - 3
+					AND  a.bo_id IN (
+						SELECT bo_id
+						FROM  tb_bo
+						where 1=1
+						<if test="trrtId != null and trrtId != ''">
+							and TRRT_ID = #{trrtId}
+						</if>
+						<if test="boId != null and boId != ''">
+							and bo_id = #{boId} or pbo_id = #{boId}
+						</if>
+					)
+					GROUP BY a.bo_id
+				) X
+				LEFT JOIN tb_bo_inc_pln_sal Y
+				ON  Y.BO_ID   	= X.BO_ID
+				AND Y.INC_YY    = X.LST_INC_YYMM
+				GROUP BY  
+					X.bo_id
+					,X.LST_INC_YYMM 
+					,X.LST_DEF_CL
+				UNION ALL
+				SELECT X.bo_id
+					,X.LST_INC_YYMM
+					,X.LST_DEF_CL
+					,0 AS CNT1
+					,COUNT(Z.BO_ID) AS CNT2
+					,'' AS LST_REG_DT1
+					,MAX(Z.REG_DT) AS LST_REG_DT2
+				FROM (
+					SELECT a.bo_id
+					, MAX(a.INC_YY) AS LST_INC_YYMM
+					, 'Q1' AS LST_DEF_CL
+					FROM tb_bo_inc_pln a
+					WHERE a.INC_YY <![CDATA[>=]]> #{yymm} - 3
+					AND  a.bo_id IN (
+						SELECT bo_id
+						FROM  tb_bo
+						where 1=1
+						<if test="trrtId != null and trrtId != ''">
+							and TRRT_ID = #{trrtId}
+						</if>
+						<if test="boId != null and boId != ''">
+							and bo_id = #{boId} or pbo_id = #{boId}
+						</if>
+					)
+					GROUP BY a.bo_id
+				) X
+				LEFT JOIN tb_bo_inc_pln_exp Z
+				ON  Z.BO_ID   	= X.BO_ID
+				AND Z.INC_YY    = X.LST_INC_YYMM
+				GROUP BY  
+					X.bo_id
+					,X.LST_INC_YYMM 
+					,X.LST_DEF_CL
+			) t1 
+			GROUP BY t1.bo_id
+				,t1.LST_INC_YYMM
+				,t1.LST_DEF_CL
+		) X1
+		INNER JOIN tb_bo X2
+		  ON X2.bo_id = X1.bo_id
+		  AND X2.bo_NM <![CDATA[<>]]> '본사'
+		ORDER BY X2.TRRT_ID, 3, 4
+	</select>
+	
+	
+
+</mapper>

@@ -1,0 +1,43 @@
+HELP.md
+.gradle
+build/
+!gradle/wrapper/gradle-wrapper.jar
+!**/src/main/**/build/
+!**/src/test/**/build/
+gradle/
+
+### 관리자만 올리는 파일 
+#application*.yml
+#build.gradle
+
+### STS ###
+.apt_generated
+.classpath
+.factorypath
+.project
+.settings
+.springBeans
+.sts4-cache
+bin/
+!**/src/main/**/bin/
+!**/src/test/**/bin/
+
+### VS Code ###
+.vscode/
+
+## add ReturnValues ## 
+*.DS_Store
+*.sw?
+.#*
+*#
+*~
+logs
+LOG_HOME_IS_UNDEFINED
+build
+target
+dependency-reduced-pom.xml
+*.sublime-*
+/scratch
+README.html
+.idea
+*.iml

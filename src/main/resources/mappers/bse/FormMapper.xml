@@ -1,0 +1,290 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+ 	@FileName    : FormMapper.xml
+	@Date        : 22.04.06
+ 	@Author      : hj.Chung
+ 	@Description : DB Query Mapper xml
+ 	@History     : 양식관리 Mapper
+ -->
+<!DOCTYPE mapper
+    PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+    "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+    
+<mapper namespace="com.lgl.gms.webapi.bse.persistence.dao.FormDao">
+
+	<!-- 손익 항목 조회 -->
+	<select id="selectIncInfoList" resultType="com.lgl.gms.webapi.bse.dto.response.IncItmInfoResponse" 
+			parameterType="com.lgl.gms.webapi.bse.dto.request.FormRequest"> 
+		select inc_itm_id
+			 , comp_id
+			 , inc_itm1
+			 , inc_itm2
+			 , inc_itm3 
+			 , inc_itm4
+			 , lv_cl
+			 , itm_nm
+			 , agg_yn
+			 , wrk_frml1
+			 , wrk_frml2
+			 , view_seq
+			 , del_yn
+			 , cust_use_yn
+			 , sal_agg_yn
+			 , inc_itm_grp1
+			 , krw_yn
+			 , (select max(view_seq) + 1 from tb_inc_itm_info
+				where comp_id = #{compId}) as max_view_seq
+		from tb_inc_itm_info
+		where comp_id = #{compId}
+			<if test="delYn != null and delYn != ''">and del_yn = #{delYn}</if>
+			<if test="selIncItm1 != null and selIncItm1 != ''">and replace(inc_itm1, ' ', '') like replace(concat('%', #{selIncItm1}, '%'), ' ', '')</if>
+		order by view_seq, inc_itm_id
+	</select>
+	
+	<select id="selectIncItmInfoByIncItmId" resultType="com.lgl.gms.webapi.bse.dto.response.IncItmInfoResponse" 
+			parameterType="com.lgl.gms.webapi.bse.persistence.model.IncItmInfoModel"> 
+		select inc_itm_id
+			 , comp_id
+			 , inc_itm1
+			 , inc_itm2
+			 , inc_itm3
+			 , lv_cl
+			 , itm_nm
+			 , agg_yn
+			 , wrk_frml1
+			 , wrk_frml2
+			 , view_seq
+			 , del_yn
+			 , inc_itm_grp1
+		from tb_inc_itm_info
+		where comp_id = #{compId}
+		  and inc_itm_id = #{incItmId}
+	</select>
+	
+	<!-- 손익항목 row 추가 -->
+	<insert id="insertIncItmInfo" parameterType="com.lgl.gms.webapi.bse.persistence.model.IncItmInfoModel">
+		insert into tb_inc_itm_info
+				(
+				  comp_id
+	 			, inc_itm1, inc_itm2, inc_itm3, inc_itm4
+				, lv_cl
+				, itm_nm
+				, inc_itm_grp1
+				, agg_yn
+				, wrk_frml1, wrk_frml2
+				, view_seq
+				, del_yn
+				, work_ip, reg_no, reg_dt
+				, cust_use_yn
+				, sal_agg_yn
+				, krw_yn
+				)
+		values (
+				  #{compId}
+		  		, #{incItm1}, #{incItm2}, #{incItm3}, #{incItm4}
+		  		, #{lvCl}
+		  		<if test="lvCl == '1'.toString()">
+					, fn_edit_itm_nm(#{lvCl}, inc_itm1, '') 
+				</if>
+				<if test="lvCl == '2'.toString()">
+					, fn_edit_itm_nm(#{lvCl}, inc_itm2, '') 
+				</if>
+				<if test="lvCl == '3'.toString()">
+					, fn_edit_itm_nm(#{lvCl}, inc_itm3, '') 
+				</if>
+				<if test="lvCl == '4'.toString()">
+					, fn_edit_itm_nm(#{lvCl}, inc_itm4, '') 
+				</if>
+		  		, #{incItmGrp1}
+		  		, #{aggYn}
+		  		, #{wrkFrml1}, #{wrkFrml2}
+		  		, #{viewSeq}
+		  		, #{delYn}
+		  		, #{workIp}, #{regNo}, #{regDt}
+		  		, #{custUseYn}
+		  		, #{salAggYn}
+		  		, #{krwYn}
+		  		)
+	</insert>
+	
+	<!-- 손익 항목 row 수정 -->
+	<update id="updateIncItmInfo" parameterType="com.lgl.gms.webapi.bse.persistence.model.IncItmInfoModel">
+		update tb_inc_itm_info
+		<set>
+			upd_dt = now()
+			, upd_no = #{updNo}
+			, work_ip = #{workIp}
+			, inc_itm2 = #{incItm2}
+			, inc_itm3 = #{incItm3}
+			, inc_itm4 = #{incItm4}
+			, wrk_frml1 = #{wrkFrml1}
+			, wrk_frml2 = #{wrkFrml2}
+			, del_yn = #{delYn}
+			, inc_itm_grp1 = #{incItmGrp1}
+			, cust_use_yn = #{custUseYn}
+			, sal_agg_yn = #{salAggYn}
+			, krw_yn = #{krwYn}
+			<if test="incItm1 != null and incItm1 != ''">, inc_itm1 = #{incItm1}</if> 
+			<if test="lvCl != null and lvCl != ''">, lv_cl = #{lvCl}</if>
+			<if test="aggYn != null and aggYn !=''">, agg_yn = #{aggYn}</if>
+			<if test="viewSeq != null and viewSeq != ''">, view_seq = #{viewSeq}</if>
+			<if test="lvCl == '1'.toString()">
+				, itm_nm = fn_edit_itm_nm(#{lvCl}, #{incItm1}, '')
+			</if>
+			<if test="lvCl == '2'.toString()">
+				, itm_nm = fn_edit_itm_nm(#{lvCl}, #{incItm2}, '')
+			</if>
+			<if test="lvCl == '3'.toString()">
+				, itm_nm = fn_edit_itm_nm(#{lvCl}, #{incItm3}, '') 
+			</if>
+			<if test="lvCl == '4'.toString()">
+				, itm_nm = fn_edit_itm_nm(#{lvCl}, #{incItm4}, '') 
+			</if>
+		</set>
+		where inc_itm_id = #{incItmId}
+	</update>
+	
+		<!-- 손익 항목 row 삭제 -->
+	<update id="deleteIncItmInfo" parameterType="java.util.HashMap">
+	 	update tb_inc_itm_info
+	 	set del_yn = 'Y'
+	 	  , upd_dt = now()
+		  , upd_no = #{updNo}
+	 	  , work_ip = #{workIp}
+	 	where inc_itm_id = #{incItmId}
+	</update>
+	
+	<!-- 손익 항목 상세 조회 -->
+	<select id="selectIncDetailList" resultType="com.lgl.gms.webapi.bse.dto.response.IncItmDetResponse" 
+			parameterType="com.lgl.gms.webapi.bse.dto.request.FormRequest"> 
+		select a.inc_itm_det_id
+			 , a.comp_id
+			 , a.inc_typ_id
+			 , a.inc_cl1_id
+			 , a.inc_cl2_id
+			 , a.inc_cl3_id
+			 , f_get_commcd_nm(a.inc_typ_id, #{locale}) as inc_typ_nm
+			 , f_get_commcd_nm(a.inc_cl1_id, #{locale}) as inc_cl1_nm
+			 , f_get_commcd_nm(a.inc_cl2_id, #{locale}) as inc_cl2_nm
+			 , f_get_commcd_nm(a.inc_cl3_id, #{locale}) as inc_cl3_nm
+			 , a.rvn_yn
+			 , a.exp_yn
+			 , a.del_yn
+			 , a.grp1_id
+			 , f_get_commcd_nm(a.grp1_id, #{locale}) as grp1_nm
+			 , a.inc_itm_id
+			 , a.agg_yn
+		from tb_inc_itm_det a
+		where comp_id = #{compId}
+			<if test="delYn != null and delYn != ''">and del_yn = #{delYn}</if>
+			<if test="selIncCl1Id != null and selIncCl1Id != ''">and inc_cl1_id = #{selIncCl1Id}</if>
+		order by a.inc_typ_id
+			   , a.inc_cl1_id, a.inc_cl2_id, a.inc_cl3_id
+			   , a.grp1_id
+	</select>
+	
+	<select id="selectIncItmDetByIncItmDetId" resultType="com.lgl.gms.webapi.bse.dto.response.IncItmDetResponse" 
+			parameterType="com.lgl.gms.webapi.bse.dto.request.FormRequest"> 
+		select a.inc_itm_det_id
+			 , a.comp_id
+			 , a.inc_typ_id
+			 , a.inc_cl1_id
+			 , a.inc_cl2_id
+			 , a.inc_cl3_id
+			 , f_get_commcd_nm(a.inc_typ_id, #{locale}) as inc_typ_nm
+			 , f_get_commcd_nm(a.inc_cl1_id, #{locale}) as inc_cl1_nm
+			 , f_get_commcd_nm(a.inc_cl2_id, #{locale}) as inc_cl2_nm
+			 , f_get_commcd_nm(a.inc_cl3_id, #{locale}) as inc_cl3_nm
+			 , a.rvn_yn
+			 , a.exp_yn
+			 , a.del_yn
+			 , a.grp1_id
+			 , f_get_commcd_nm(a.grp1_id, #{locale}) as grp1_nm
+			 , a.inc_itm_id
+			 , a.agg_yn
+		from tb_inc_itm_det a
+		where inc_itm_det_id = #{incItmDetId}
+	</select>
+	
+	<!-- 손익항목 상세 row 추가 -->
+	<insert id="insertIncItmDetail" parameterType="com.lgl.gms.webapi.bse.persistence.model.IncItmDetModel">
+		insert into tb_inc_itm_det
+				(
+				  comp_id
+				, inc_typ_id
+				, inc_cl1_id, inc_cl2_id, inc_cl3_id
+				, rvn_yn
+				, exp_yn
+				, del_yn
+				, grp1_id
+				, inc_itm_id
+				, agg_yn
+				, work_ip, reg_no, reg_dt
+				)
+		values (
+				  #{compId}
+				, #{incTypId}
+				, #{incCl1Id}, #{incCl2Id}, #{incCl3Id}
+				, #{rvnYn}
+				, #{expYn}
+				, #{delYn}
+				, #{grp1Id}
+		  		, #{incItmId}
+		  		, #{aggYn}
+		  		, #{workIp}, #{regNo}, #{regDt}
+		  		)
+	</insert>
+	
+	<!-- 손익 항목 상세 row 수정 -->
+	<update id="updateIncItmDetail" parameterType="com.lgl.gms.webapi.bse.persistence.model.IncItmDetModel">
+		update tb_inc_itm_det
+		set upd_dt = now()
+		  , upd_no = #{updNo}
+		  , work_ip = #{workIp}
+		  , inc_typ_id = #{incTypId}
+		  , inc_cl1_id = #{incCl1Id}
+		  , inc_cl2_id = #{incCl2Id}
+		  , inc_cl3_id = #{incCl3Id}
+		  , rvn_yn = #{rvnYn}
+		  , exp_yn = #{expYn}
+		  , del_yn= #{delYn}
+		  , grp1_id = #{grp1Id}
+		  , inc_itm_id = #{incItmId}
+		  , agg_yn = #{aggYn}
+		where inc_itm_det_id = #{incItmDetId}
+	</update>
+	
+		<!-- 손익 항목 상세 row 삭제 -->
+	<update id="deleteIncItmDetail" parameterType="java.util.HashMap">
+	 	update tb_inc_itm_det
+	 	set del_yn = 'Y'
+	 	  , upd_dt = now()
+		  , upd_no = #{updNo}
+	 	  , work_ip = #{workIp}
+	 	where inc_itm_det_id = #{incItmDetId}
+	</update>
+	
+	<!-- 손익 항목 그룹 1 조회 -->
+	<select id="selectGrp1List" resultType="com.lgl.gms.webapi.bse.dto.response.IncItmInfoResponse" 
+			parameterType="com.lgl.gms.webapi.bse.dto.request.FormRequest"> 
+		select inc_itm_id
+			 , comp_id
+			 , inc_itm1
+			 , inc_itm2
+			 , inc_itm3
+			 , lv_cl
+			 , itm_nm
+			 , agg_yn
+			 , wrk_frml1
+			 , wrk_frml2
+			 , view_seq
+			 , del_yn
+			 , inc_itm_grp1
+		from tb_inc_itm_info
+		where comp_id = #{compId}
+		  and lv_cl = 1
+		  and del_yn = #{delYn}
+		order by view_seq, inc_itm_id
+	</select>
+
+</mapper>

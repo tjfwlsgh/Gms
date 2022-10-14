@@ -1,0 +1,119 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+ 	@FileName    : FinCommonDao.java
+	@Date        : 2022.04.13
+ 	@Author      : jokim
+ 	@Description : 재무공통 DAO DB Query Mapper xml
+ 	@History     :
+ -->
+<!DOCTYPE mapper
+    PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+    "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="com.lgl.gms.webapi.fin.persistence.dao.FinCommonDao">
+	
+	<!-- 양식 정보 리스트 조회 -->
+	<select id="selectFrmInfoList" resultType="com.lgl.gms.webapi.fin.dto.response.FrmInfoResponse" parameterType="com.lgl.gms.webapi.fin.dto.request.FinCommonRequest">
+		select frm_id
+			 ,frm_cd_id
+			 ,frm_typ
+			 ,if((#{locale} is null or #{locale} = 'ko'), frm_nm, frm_nm_eng) as frm_nm
+		 from tb_frm_info
+	  	where comp_id = #{compId}
+	  	  and frm_cd_id = (select tccv_id from tb_tcc_val a, tb_tcc b where a.tcc_id = b.tcc_id and b.bse_cd = 'FRM01' and a.std_cd = #{frmCd})
+		  and use_yn = 'Y'
+  	</select>
+  	
+  	<!-- 양식정보 법인 리스트 조회 -->
+	<select id="selectFrmInfoBoList" resultType="com.lgl.gms.webapi.fin.dto.response.FrmInfoBoResponse" parameterType="com.lgl.gms.webapi.fin.dto.request.FinCommonRequest">
+		select frm_id
+			 ,col_seq
+			 ,bo_id
+		 from tb_frm_info_bo
+	  	where frm_id = #{frmId}
+		order by col_seq
+  	</select>
+  	
+  	<!-- 양식 정보 상세 리스트 조회 -->
+	<select id="selectFrmInfoDetList" resultType="com.lgl.gms.webapi.fin.dto.response.FrmInfoDetResponse" parameterType="com.lgl.gms.webapi.fin.dto.request.FinCommonRequest">
+		select frm_id
+			 ,row_seq
+			 ,if((#{locale} is null or #{locale} = 'ko'), frm_nm, frm_nm_eng) as frm_nm
+			 ,frm_nm_eng
+			 ,lv_cl
+			 ,acc_id			 
+		 from tb_frm_info_det
+	  	where frm_id = #{frmId}
+	  	order by row_seq
+  	</select>
+  	
+  	
+  	<!-- 재무제표 법인 리스트(법인리스트) - 법인목록관리 왼쪽 리스트 -->
+	<select id="selectFrmSourceBoList" resultType="com.lgl.gms.webapi.fin.dto.response.FrmInfoBoResponse" parameterType="com.lgl.gms.webapi.fin.dto.request.FinCommonRequest">
+		select t.*
+			 ,if(pbo_nm is null, bo_nm, concat(pbo_nm, '/', bo_nm)) as bo_nm_str
+		  from (
+			select (select t.std_cd_nm from tb_tcc_val t where a.trrt_id = t.tccv_id) as trrt_nm
+				,a.pbo_id
+				,a.bo_id
+				,a.bo_nm
+				,(select b.bo_nm from tb_bo b where b.bo_id = a.pbo_id) pbo_nm
+				,a.trrt_id
+			from tb_bo a
+			where a.bo_id not in (select bo_id from tb_frm_info_bo c where c.frm_id = #{frmId})
+		  ) t
+		  where trrt_nm is not null
+		 order by trrt_id
+  	</select>
+  	
+  	<!-- 재무제표 법인양식 리스트(법인양식 법인리스트) - 법인목록관리 오른쪽 리스트 -->
+	<select id="selectFrmTargetBoList" resultType="com.lgl.gms.webapi.fin.dto.response.FrmInfoBoResponse" parameterType="com.lgl.gms.webapi.fin.dto.request.FinCommonRequest">
+		select t.*
+			 ,if(pbo_nm is null, bo_nm, concat(pbo_nm, '/', bo_nm)) as bo_nm_str
+		  from (
+			select (select t.std_cd_nm from tb_tcc_val t where b.trrt_id = t.tccv_id) as trrt_nm
+				,b.pbo_id
+				,b.bo_id
+				,b.bo_nm
+				,(select t.bo_nm from tb_bo t where t.bo_id = b.pbo_id) pbo_nm
+				,b.trrt_id
+				,a.col_seq
+			from tb_frm_info_bo a, tb_bo b
+			where a.frm_id  = #{frmId}
+			  and a.bo_id = b.bo_id
+		  ) t
+		  where trrt_nm is not null
+		order by t.col_seq
+  	</select>
+	
+	<!-- 양식법인관리 삭제 -->
+	<delete  id="deleteFrmInfoBos" parameterType="com.lgl.gms.webapi.fin.dto.request.FinCommonRequest">
+  		delete from tb_frm_info_bo
+		 where frm_id = #{frmId}
+  	</delete>
+	
+	<!-- 양식법인관리 추가  -->
+   	<insert id="insertFrmInfoBos" parameterType="java.util.HashMap">
+	   	
+   		insert into tb_frm_info_bo
+			 ( 
+			 	frm_id
+				,col_seq
+				,bo_id
+			  )
+			 values
+	        <foreach collection="frmBos" item="item" index="index" separator=" , ">
+	           ( 
+	           	  #{frmId}
+				 ,#{item.colSeq}
+				 ,#{item.boId}
+				 
+				)
+	        </foreach>
+
+  	</insert>   
+
+
+</mapper>
+
+

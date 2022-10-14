@@ -1,0 +1,186 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+ 	@FileName    : IncExpRetDao.java
+	@Date        	: 2022.03.14
+ 	@Author      : jokim
+ 	@Description : 비용실적 DAO DB Query Mapper xml
+ 	@History     :
+ -->
+<!DOCTYPE mapper
+    PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+    "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="com.lgl.gms.webapi.inc.persistence.dao.IncExpRetDao">
+  	
+  	<!-- 법인 비용계획 리스트 조회 -->
+	<select id="selectIncExpRetList" resultType="com.lgl.gms.webapi.inc.dto.response.BoIncExpRetResponse" parameterType="com.lgl.gms.webapi.inc.dto.request.BoIncRetRequest">
+		select bo_id
+				, inc_yymm
+				, def_cl
+				, seq
+				, inc_itm_id
+				, typ_cd
+				, cl1_cd
+				, cl2_cd
+				, cl3_cd
+				, grp1_cd
+				, rvn_amt
+				, exp_amt
+				, ret_dt
+				, agg_yn
+				, inc_itm_det_id
+				, inc_note
+				, reg_dt
+				, upd_dt
+				, reg_no
+				, upd_no				
+		from tb_bo_inc_ret_exp
+	  where bo_id = #{boId}
+		 and inc_yymm = #{incYymm}
+		 and def_cl = #{defCl}
+	  <if test="typCdNm != null and typCdNm != ''">
+		 and typ_cd = #{typCdNm}
+	  </if>
+	  <if test="cls3 != null and cls3 != ''">
+		 and UPPER(replace(cl3_cd, ' ', '')) like UPPER(replace(concat('%', #{cls3}, '%'), ' ', ''))
+	  </if>
+	   order by typ_cd, inc_yymm, cl1_cd, cl2_cd
+  	</select>
+  	
+  	
+  	<!-- 비용실적 삭제 -->
+  	<delete  id="deleteIncExpRet" parameterType="com.lgl.gms.webapi.inc.dto.request.BoIncRetRequest">
+  		delete from tb_bo_inc_ret_exp
+		where bo_id = #{boId}
+		and inc_yymm = #{incYymm}
+		and def_cl = #{defCl}
+		and typ_cd = #{typCdNm}
+  		<if test="seq!=null and seq!=''">and seq=#{seq}</if>
+  	</delete>
+  	
+  	<!-- 법인 손익 비용계획 추가  -->
+   	<insert id="insertIncExpRet" parameterType="java.util.HashMap">
+	   	
+   		insert into tb_bo_inc_ret_exp
+			 ( bo_id
+			 	,inc_yymm
+				,def_cl
+				,seq
+				,inc_itm_id
+				,typ_cd
+				,cl1_cd
+				,cl2_cd
+				,cl3_cd
+				,grp1_cd
+				,rvn_amt				
+				,exp_amt				
+				,ret_dt
+				,agg_yn
+				,inc_note				
+				,inc_itm_det_id
+				,reg_no
+			  )
+			 values
+	        <foreach collection="itemList" item="item" index="index" separator=" , ">
+	           ( 
+	           	 #{item.boId}
+				 ,#{item.incYymm}
+				 ,#{item.defCl}
+				 ,(select ifnull(max(t.seq),0)+1 from tb_bo_inc_ret_exp t where t.bo_id=#{boId} and t.inc_yymm=#{incYymm} and t.def_cl=#{defCl})
+				 ,#{item.incItmId}
+				 ,#{item.typCd}
+				 ,#{item.cl1Cd}
+				 ,#{item.cl2Cd}
+				 ,#{item.cl3Cd}
+				 ,#{item.grp1Cd}
+				  ,IFNULL(#{item.rvnAmt}, 0)
+				 ,IFNULL(#{item.expAmt}, 0)				 
+				 ,#{item.retDt}
+				 ,#{item.aggYn}
+				 ,#{item.incNote}
+				 ,#{item.incItmDetId}
+				 ,#{item.regNo}
+				)
+	        </foreach>
+
+  	</insert>   	
+ 
+ 	<!-- 비용실적 마감 정보헤더값 update -->
+	<update id="updateIncExpRetCls" parameterType="com.lgl.gms.webapi.inc.persistence.model.BoIncRetModel">
+		update tb_bo_inc_ret
+			set upd_dt = now()
+				 ,upd_no = #{updNo}
+				 ,ret_cls2='Y'
+		where bo_id = #{boId}
+			and inc_yymm = #{incYymm}
+		 	and def_cl = #{defCl}
+	</update>	
+  	
+  	<!--  법인 손익 수익/비용 실적에서 법인 손익 매출실적 상세 데이터 : 해당 비용계획 seq 에 해당하는 매출계획 상세를 조회 -->
+	<select id="selectIncSalRetByExpList" resultType="com.lgl.gms.webapi.inc.dto.response.IncSaleRetDetResponse" parameterType="com.lgl.gms.webapi.inc.dto.request.BoIncRetRequest">
+	
+		select e.seq
+			,e.cust_nm
+			,e.svc_typ
+			,e.grp1_cd
+			,e.grp2_cd
+			,e.grp3_cd
+			,d.ret_amt
+		from (
+			select
+				 a.bo_id
+				,a.inc_yymm
+				,b.inc_typ_id
+				,b.inc_cl1_id
+				,b.inc_cl2_id
+				,b.inc_cl3_id
+				,a.grp1_cd
+			from tb_bo_inc_ret_exp a
+				left join vw_inc_itm_det b on a.inc_itm_det_id = b.inc_itm_det_id
+			where a.bo_id = #{boId}
+			 and a.inc_yymm = #{incYymm}
+			 and a.def_cl = #{defCl}
+			 and a.seq = #{seq}
+			) c
+			left join tb_bo_inc_ret_sal_det d
+				on c.bo_id = d.bo_id 
+					and c.inc_yymm  = d.inc_yymm
+					and c.inc_typ_id = d.inc_typ_id
+					and c.inc_cl1_id = d.inc_cl1_id
+					and c.inc_cl2_id = d.inc_cl2_id
+					and d.ret_amt > 0
+			left join tb_bo_inc_ret_sal e
+				on d.bo_id = e.bo_id 
+				and d.inc_yymm  = e.inc_yymm
+				and d.def_cl = e.def_cl 
+				and d.seq = e.seq
+				and e.grp1_cd = c.grp1_cd
+		where ret_amt > 0
+		  and e.grp1_cd = c.grp1_cd
+  	</select>
+  	
+  	<!-- 비용실적 등록시(영업실적) 금액 검증용 -->
+  	<select id="selectType1SaleRetAmt" resultType="HashMap" parameterType="HashMap">
+	
+		select bo_id
+			,inc_yymm
+			<if test="grp1s != null and grp1s.size() > 0">
+				
+				<foreach collection="grp1s" item="item" index="index">
+					,sum(if(grp1_cd = #{item.stdCdNm}, lbr_cost,  null)) as lbr_${item.stdCd}
+					,sum(if(grp1_cd = #{item.stdCdNm}, exp_amt,  null)) as exp_${item.stdCd}
+	
+			    </foreach>
+			    
+			</if>
+
+		 from tb_bo_inc_ret_sal
+		where bo_id  = #{boId}
+		 and inc_yymm = #{incYymm}
+		 and def_cl = #{defCl}
+			
+  	</select>
+  	
+</mapper>
+
+

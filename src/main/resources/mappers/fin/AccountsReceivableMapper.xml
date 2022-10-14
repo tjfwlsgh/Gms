@@ -1,0 +1,112 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+ 	@FileName    : ArIncrementalAnalysisMapper.xml
+	@Date        : 22.04.13
+ 	@Author      : hj.Chung
+ 	@Description : DB Query Mapper xml
+ 	@History     :
+ -->
+<!DOCTYPE mapper
+    PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+    "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+    
+<mapper namespace="com.lgl.gms.webapi.fin.persistence.dao.AccountsReceivableDao">
+
+	<!-- 미수채권 증감 현황(상선포함) 조회 -->
+	<select id="selectIncludingMarineList" resultType="com.lgl.gms.webapi.fin.dto.response.AccountsReceivableResponse"
+			parameterType="com.lgl.gms.webapi.fin.dto.request.AccountsReceivableReuqest"> 
+		select a.ar_yymm
+		 	 , a.bo_id
+		 	 , a.frm_clss_cd
+		 	 , a.bo_nm
+		 	 , ifnull(a.unrd_bnds_amt, 0) unrd_bnds_amt
+		 	 , ifnull(a.rcvb_bnds_amt_30, 0) rcvb_bnds_amt_30
+		 	 , ifnull(a.rcvb_bnds_amt_60, 0) rcvb_bnds_amt_60
+		 	 , ifnull(a.rcvb_bnds_amt_90, 0) rcvb_bnds_amt_90
+		 	 , ifnull(a.rcvb_bnds_amt_91, 0) rcvb_bnds_amt_91
+		 	 , ifnull((a.rcvb_bnds_amt_30 + a.rcvb_bnds_amt_60 + a.rcvb_bnds_amt_90 + a.rcvb_bnds_amt_91), 0) rcvb_bnds_tamt
+		from tb_bo_ar_smmry a
+		where a.frm_clss_cd = '1'
+		<if test="boId != null and boId!=''">
+		  and a.bo_id = #{boId}
+		</if>
+		<if test="arYymm != null and arYymm != ''">
+			and a.ar_yymm = #{arYymm}
+		</if>
+		order by a.bo_nm
+	</select>
+	
+	<!-- 미수채권 (상선제외) 조회 -->
+	<select id="selectExcludingMarineList" resultType="com.lgl.gms.webapi.fin.dto.response.AccountsReceivableResponse"
+			parameterType="com.lgl.gms.webapi.fin.dto.request.AccountsReceivableReuqest"> 
+		select a.ar_yymm
+		 	 , a.bo_id
+		 	 , a.frm_clss_cd
+		 	 , a.bo_nm
+		 	 , ifnull(a.unrd_bnds_amt, 0) unrd_bnds_amt
+		 	 , ifnull(a.rcvb_bnds_amt_30, 0) rcvb_bnds_amt_30
+		 	 , ifnull(a.rcvb_bnds_amt_60, 0) rcvb_bnds_amt_60
+		 	 , ifnull(a.rcvb_bnds_amt_90, 0) rcvb_bnds_amt_90
+		 	 , ifnull(a.rcvb_bnds_amt_91, 0) rcvb_bnds_amt_91
+		 	 , ifnull((a.rcvb_bnds_amt_30 + a.rcvb_bnds_amt_60 + a.rcvb_bnds_amt_90 + a.rcvb_bnds_amt_91), 0) rcvb_bnds_tamt
+		from tb_bo_ar_smmry a
+		where a.frm_clss_cd = '2'
+		<if test="boId != null and boId!=''">
+		  and a.bo_id = #{boId}
+		</if>
+		<if test="arYymm != null and arYymm != ''">
+			and a.ar_yymm = #{arYymm}
+		</if>
+		order by a.bo_nm
+	</select>
+	
+	<!-- 미수채권 증감 현황(상선제외) 삭제 -->
+	<delete id="deleteAccounts" parameterType="java.util.Map">
+  		delete from tb_bo_ar_smmry
+		where ar_yymm = #{arYymm}
+		  and frm_clss_cd = #{incclCd}
+  	</delete>
+	
+	<!-- 미수채권 증감 현황 추가 (상선 포함 + 상선 제외) -->
+	<insert id="insertAccountsExcel" parameterType="java.util.Map">
+   		insert into tb_bo_ar_smmry
+			 ( 
+			   ar_yymm
+			 , bo_id
+			 , frm_clss_cd
+			 , bo_nm
+			 , unrd_bnds_amt
+		 	 , rcvb_bnds_amt_30
+		 	 , rcvb_bnds_amt_60
+		 	 , rcvb_bnds_amt_90
+		 	 , rcvb_bnds_amt_91
+			 , rcvb_bnds_tamt
+			 )
+			 values
+	        <foreach collection="arList" item="item" index="index" separator=" , ">
+	           ( 
+	           	 #{arYymm}
+	           , (select fn_get_bo_id(#{item.boNm}))
+	           , #{frmClssCd}
+	           , #{item.boNm}
+	           , ifnull(#{item.unrdBndsAmt}, 0)
+	           , ifnull(#{item.rcvbBndsAmt30}, 0)
+	           , ifnull(#{item.rcvbBndsAmt60}, 0)
+	           , ifnull(#{item.rcvbBndsAmt90}, 0)
+	           , ifnull(#{item.rcvbBndsAmt91}, 0)
+	           , ifnull(#{item.rcvbBndsTamt}, 0)
+				)
+	        </foreach>
+  	</insert> 
+  	
+  	<!-- 미수채권 증감 현황 row 삭제 -->
+  	<delete id="delectAccountsRow" parameterType="com.lgl.gms.webapi.fin.dto.request.AccountsReceivableReuqest"> 
+  		delete from tb_bo_ar_smmry
+		where ar_yymm = #{arYymm}
+		  and frm_clss_cd = #{incclCd}
+		  and bo_id = #{boId}
+  	</delete>
+	
+	
+  	
+</mapper>

@@ -1,0 +1,158 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+ 	@FileName    : BseCloseMapper.xml
+	@Date        : 22.04.01
+ 	@Author      : hj.Chung
+ 	@Description : DB Query Mapper xml
+ 	@History     :
+ -->
+<!DOCTYPE mapper
+    PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+    "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+    
+<mapper namespace="com.lgl.gms.webapi.bse.persistence.dao.BseCloseDao">
+	<!-- 마감 현황 조회 -->
+	<select id="selectCloseList" resultType="com.lgl.gms.webapi.bse.dto.response.BseCloseResponse" parameterType="com.lgl.gms.webapi.bse.dto.request.BseCloseRequest"> 
+		select A.bo_id
+		     , A.yy
+		     , A.cls_pgm
+		     , (select k.std_cd_nm from tb_tcc_val k
+		     	where k.cd_val = A.cls_pgm) cls_pgm_nm
+		     , if(b.bo_cl = 'H'
+		     		, if(#{locale} = 'ko', b.bo_nm, b.bo_nm_eng)
+		     		, (select if(#{locale} = 'ko', t.bo_nm, t.bo_nm_eng)  
+		     		   from tb_bo t 
+		     		   where b.pbo_id = t.bo_id)) bo_nm_h		
+		     , if(b.bo_cl = 'B', if(#{locale} = 'ko', b.bo_nm, b.bo_nm_eng), '') sub_bo_nm
+			 , b.trrt_id as trrt
+			 , (select ttv2.std_cd_nm from tb_tcc_val ttv2 
+			 	where ttv2.tccv_id = b.trrt_id) as trrt_nm
+			 , if(mon_01_q1 =  1, 'Y', 'N') as mon_01_q1, if(mon_01_q2 =  1, 'Y', 'N') as mon_01_q2
+			 , if(mon_02_q1 =  1, 'Y', 'N') as mon_02_q1, if(mon_02_q2 =  1, 'Y', 'N') as mon_02_q2
+			 , if(mon_03_q1 =  1, 'Y', 'N') as mon_03_q1, if(mon_03_q2 =  1, 'Y', 'N') as mon_03_q2
+			 , if(mon_04_q1 =  1, 'Y', 'N') as mon_04_q1, if(mon_04_q2 =  1, 'Y', 'N') as mon_04_q2
+			 , if(mon_05_q1 =  1, 'Y', 'N') as mon_05_q1, if(mon_05_q2 =  1, 'Y', 'N') as mon_05_q2
+			 , if(mon_06_q1 =  1, 'Y', 'N') as mon_06_q1, if(mon_06_q2 =  1, 'Y', 'N') as mon_06_q2
+			 , if(mon_07_q1 =  1, 'Y', 'N') as mon_07_q1, if(mon_07_q2 =  1, 'Y', 'N') as mon_07_q2
+			 , if(mon_08_q1 =  1, 'Y', 'N') as mon_08_q1, if(mon_08_q2 =  1, 'Y', 'N') as mon_08_q2
+			 , if(mon_09_q1 =  1, 'Y', 'N') as mon_09_q1, if(mon_09_q2 =  1, 'Y', 'N') as mon_09_q2
+			 , if(mon_10_q1 =  1, 'Y', 'N') as mon_10_q1, if(mon_10_q2 =  1, 'Y', 'N') as mon_10_q2
+			 , if(mon_11_q1 =  1, 'Y', 'N') as mon_11_q1, if(mon_11_q2 =  1, 'Y', 'N') as mon_11_q2
+			 , if(mon_12_q1 =  1, 'Y', 'N') as mon_12_q1, if(mon_12_q2 =  1, 'Y', 'N') as mon_12_q2
+		from (
+			select a.bo_id
+				 , a.yy
+				 , a.cls_pgm
+				 , sum(if((a.cls_no = '01' and a.mon_01 = 'Y'), 1, 0)) as mon_01_q1
+				 , sum(if((a.cls_no = '02' and a.mon_01 = 'Y'), 1, 0)) as mon_01_q2
+				 , sum(if((a.cls_no = '01' and a.mon_02 = 'Y'), 1, 0)) as mon_02_q1
+				 , sum(if((a.cls_no = '02' and a.mon_02 = 'Y'), 1, 0)) as mon_02_q2
+				 , sum(if((a.cls_no = '01' and a.mon_03 = 'Y'), 1, 0)) as mon_03_q1
+				 , sum(if((a.cls_no = '02' and a.mon_03 = 'Y'), 1, 0)) as mon_03_q2
+				 , sum(if((a.cls_no = '01' and a.mon_04 = 'Y'), 1, 0)) as mon_04_q1
+				 , sum(if((a.cls_no = '02' and a.mon_04 = 'Y'), 1, 0)) as mon_04_q2
+				 , sum(if((a.cls_no = '01' and a.mon_05 = 'Y'), 1, 0)) as mon_05_q1
+				 , sum(if((a.cls_no = '02' and a.mon_05 = 'Y'), 1, 0)) as mon_05_q2
+				 , sum(if((a.cls_no = '01' and a.mon_06 = 'Y'), 1, 0)) as mon_06_q1
+				 , sum(if((a.cls_no = '02' and a.mon_06 = 'Y'), 1, 0)) as mon_06_q2
+				 , sum(if((a.cls_no = '01' and a.mon_07 = 'Y'), 1, 0)) as mon_07_q1
+				 , sum(if((a.cls_no = '02' and a.mon_07 = 'Y'), 1, 0)) as mon_07_q2
+				 , sum(if((a.cls_no = '01' and a.mon_08 = 'Y'), 1, 0)) as mon_08_q1
+				 , sum(if((a.cls_no = '02' and a.mon_08 = 'Y'), 1, 0)) as mon_08_q2
+				 , sum(if((a.cls_no = '01' and a.mon_09 = 'Y'), 1, 0)) as mon_09_q1
+				 , sum(if((a.cls_no = '02' and a.mon_09 = 'Y'), 1, 0)) as mon_09_q2
+				 , sum(if((a.cls_no = '01' and a.mon_10 = 'Y'), 1, 0)) as mon_10_q1
+				 , sum(if((a.cls_no = '02' and a.mon_10 = 'Y'), 1, 0)) as mon_10_q2
+				 , sum(if((a.cls_no = '01' and a.mon_11 = 'Y'), 1, 0)) as mon_11_q1
+				 , sum(if((a.cls_no = '02' and a.mon_11 = 'Y'), 1, 0)) as mon_11_q2
+				 , sum(if((a.cls_no = '01' and a.mon_12 = 'Y'), 1, 0)) as mon_12_q1
+				 , sum(if((a.cls_no = '02' and a.mon_12 = 'Y'), 1, 0)) as mon_12_q2
+			from tb_bo_cls_mgmt a
+			group by a.bo_id, a.yy, a.cls_pgm
+		) A
+		left join tb_bo b on (A.bo_id = b.bo_id)
+		where a.yy = #{yy}
+		  and b.comp_id = #{compId}
+			    <if test="boId != null and boId != ''">
+			    	and (a.bo_id = #{boId} or b.pbo_id = #{boId})
+			    </if>
+				<if test="pgm != null and pgm!=''">
+			   		and a.cls_pgm in (
+			   				select cd_val from tb_tcc_val
+			   				where tcc_id in (
+			   									select tcc_id from tb_tcc
+			   									where bse_cd = #{pgm}
+			   								)	
+			   			)
+			    </if>
+		order by ifnull(b.pbo_id, A.bo_id), A.bo_id
+	</select>
+	
+	<!-- 법인 리스트 -->
+	<select id="selectBoList" resultType="com.lgl.gms.webapi.bse.dto.response.BseCloseResponse" parameterType="com.lgl.gms.webapi.bse.dto.request.BseCloseRequest"> 
+		select d.trrt_nm
+		     , a.bo_nm as bo_nm_h
+		     , b.bo_nm as sub_bo_nm
+		     , case 
+		     	when b.bo_id is not null then b.bo_id
+				else a.bo_id
+			   end as bo_id
+			 , a.bo_id as bo_id_h
+			 , ifnull(b.bo_nm, a.bo_nm) as bo_nm
+			 , case
+				when a.bo_cl = 'h' and b.bo_cl = 'b' then 'b'
+				else 'h'
+			   end as bo_cl
+			 , ifnull(c.scor_cnt, 0) as scor_cnt
+		from tb_bo a
+		left join tb_bo b
+		on a.bo_id = b.pbo_id
+		and b.use_yn = 'y'
+		left join (
+			select c.pbo_id, count(1) as scor_cnt
+			from tb_bo c
+			where c.pbo_id is not null
+			and c.use_yn = 'y'
+			group by c.pbo_id
+		) c
+		on c.pbo_id = a.bo_id
+		left join (
+			select tccv_id, std_cd_nm as trrt_nm, view_seq
+			from tb_tcc_val
+			where tcc_id = (
+				select tcc_id
+				from tb_tcc
+				where bse_cd = 'trrt'
+			)
+		) d
+		on d.tccv_id = a.trrt_id
+		where a.comp_id = 100
+		and a.bo_cl = 'h'
+		and a.use_yn = 'y'
+		and a.trrt_id is not null
+		order by d.view_seq, a.trrt_id, a.bo_id, b.bo_id
+	</select>
+	
+	<!-- 일괄 마감 / 해제 프로시저 호출 -->
+	<parameterMap type="com.lgl.gms.webapi.bse.dto.request.BseCloseRequest" id="clsMgmtProcMap" >
+		<parameter property="boId" 	jdbcType="VARCHAR" javaType="java.lang.Integer" mode="IN" />
+		<parameter property="incYymm" jdbcType="VARCHAR" javaType="java.lang.String" mode="IN" />
+		<parameter property="plnRetCl" jdbcType="VARCHAR" javaType="java.lang.String" mode="IN" />
+		<parameter property="jobCl" jdbcType="VARCHAR" javaType="java.lang.String" mode="IN" />
+		<parameter property="defCl" jdbcType="VARCHAR" javaType="java.lang.String" mode="IN" />
+		<parameter property="clsPgm" jdbcType="VARCHAR" javaType="java.lang.String" mode="IN" />
+		<parameter property="clsFlg" jdbcType="VARCHAR" javaType="java.lang.String" mode="IN" />
+		<parameter property="workIp" jdbcType="VARCHAR" javaType="java.lang.String" mode="IN" />
+		<parameter property="updNo" jdbcType="VARCHAR" javaType="java.lang.String" mode="IN" />
+		<parameter property="rtn" jdbcType="VARCHAR" javaType="java.lang.String" mode="OUT" />
+	</parameterMap>
+	
+	<select  id="procBseUpdClsMgmt" resultType="String" parameterMap="clsMgmtProcMap" statementType="CALLABLE">
+		<![CDATA[
+			{call sp_bat_cls_mgmt(?, ?, ?, ?, ?, ?, ?, ?, ?, ?)}
+		]]>
+	</select> 
+	
+	
+
+</mapper>

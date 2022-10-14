@@ -1,0 +1,148 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+ 	@FileName    : CurrStatusInqMapper.xml
+	@Date        : 22.05.06
+ 	@Author      : hj.Chung
+ 	@Description : DB Query Mapper xml
+ 	@History     :
+ -->
+<!DOCTYPE mapper
+    PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+    "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+    
+<mapper namespace="com.lgl.gms.webapi.fin.persistence.dao.CurrStatusInqDao">
+
+	<!-- 재무상태 조회 -->
+	<select id="selectBalanSheetList" resultType="com.lgl.gms.webapi.fin.dto.response.FinCurrStatusInqResponse"
+			parameterType="com.lgl.gms.webapi.fin.dto.request.FinCurrStatusInqRequest"> 
+		select e.acc_id
+			 , e.acc_itm_nm
+			 , ifnull(d.bef_amt, 0) as bef_amt
+			 , ifnull(d.aft_amt, 0) as aft_amt
+			 , (ifnull(d.aft_amt, 0) - ifnull(d.bef_amt, 0)) as increase_amt
+			 , if(d.bef_amt = 0, 0, round((d.aft_amt - d.bef_amt)/d.bef_amt * 100,1)) as increase_rate
+		from tb_acc_mgmt e
+		left join ( 
+				select x.acc_id
+					 , round(sum(if(x.cls_yymm = cast(#{yymm} as unsigned) - 100, fin_amt, 0)),-1) as bef_amt
+					 , round(sum(if(x.cls_yymm = #{yymm}, fin_amt, 0)), -1) as aft_amt
+				from (
+					select a.cls_yymm
+						 , round(b.fin_amt/#{ct}, 0) as fin_amt 
+						 , c.acc_id
+					from tb_bo_bs_info a
+					left join tb_bo_bs_det_krw b 
+					  on b.bs_id = a.bs_id 
+					inner join tb_frm_info_det c 
+					  on c.frm_id = a.frm_id 
+					  and c.row_seq = b.row_seq
+					 and c.acc_id > 0
+					where 1 = 1
+						<if test="boId != null and boId != ''">
+							and a.bo_id = #{boId}
+						</if>	
+						<if test="yymm != null and yymm != ''">
+						  and a.cls_yymm in (cast(#{yymm} as unsigned) - 100, cast(#{yymm} as unsigned))
+						</if>
+					order by c.row_seq
+				) X
+				group by x.acc_id
+			) d
+		on e.acc_id = d.acc_id
+		where acc_grp_cd = 1
+	</select>
+	
+	<!-- 법인 리스트 조회 -->
+	<resultMap id="BoMap" type="com.lgl.gms.webapi.cmm.dto.response.BoResponse">
+		<id property="boId" column="bo_id" />
+		<result property="boNm" column="bo_nm"/>
+		<result property="boNmEng" column="bo_nm_eng"/>
+	</resultMap>
+	
+	<select id="selectBoListByCurr" parameterType="com.lgl.gms.webapi.cmm.dto.request.BoRequest" resultMap="BoMap" >
+		select t.*
+		     , b.bo_nm
+		     , b.bo_nm_eng
+		     , b.use_yn
+		from (
+				select distinct a.bo_id
+				from tb_frm_info_bo a
+				where a.frm_id in (
+						select frm_id from tb_frm_info
+						where comp_id = #{compId}
+				          and use_yn = #{useYn}
+					)
+				group by a.bo_id
+			) t 
+		left join tb_bo b on (t.bo_id = b.bo_id)
+		group by t.bo_id
+		order by ifnull(b.pbo_id, b.bo_id), t.bo_id
+    </select>
+	
+	
+	<!-- 손익계산서 조회 -->
+	<select id="selectIncStatementList" resultType="com.lgl.gms.webapi.fin.dto.response.FinCurrStatusInqResponse"
+			parameterType="com.lgl.gms.webapi.fin.dto.request.FinCurrStatusInqRequest"> 
+		select e.acc_id
+			 , e.acc_itm_nm
+			 , ifnull(d.bef_amt, 0) as bef_amt
+			 , ifnull(if(d.bef_amt = 0, 0, round(d.bef_amt/g.bef_sal_amt * 100, 1)), 0) as bef_comp_ration
+			 , ifnull(d.aft_amt, 0) as aft_amt
+			 , ifnull(if(d.aft_amt = 0, 0, round(d.aft_amt/g.aft_sal_amt * 100, 1)), 0) as aft_comp_ration
+			 , ifnull((ifnull(d.aft_amt, 0) - ifnull(d.bef_amt, 0)), 0) as increase_amt
+			 , ifnull(if(d.bef_amt = 0, 0, round((d.aft_amt - d.bef_amt)/d.bef_amt * 100, 1)), 0) as increase_rate
+		from tb_acc_mgmt e
+		left join ( 
+			select x.acc_id
+				, round(sum(if(x.cls_yymm = cast(#{yymm} as unsigned) - 100, fin_amt, 0)),-1) as bef_amt
+				, round(sum(if(x.cls_yymm = #{yymm}, fin_amt, 0)), -1) as aft_amt
+			 from (
+					select a.cls_yymm, round(b.fin_amt/#{ct}, 0) as fin_amt , c.acc_id
+					from tb_bo_pl_info a
+					left join tb_bo_pl_det_krw b 
+					  on b.pl_id = a.pl_id 
+					inner join tb_frm_info_det c 
+					  on c.frm_id = a.frm_id
+					 and c.row_seq = b.row_seq
+					 and c.acc_id > 0
+					where a.bo_id = #{boId}
+					and a.cls_yymm in( cast(#{yymm} as unsigned) - 100, cast(#{yymm} as unsigned))
+					order by c.row_seq
+				) X
+				group by x.acc_id
+			) d
+			on e.acc_id = d.acc_id
+			left join (
+				select x.acc_id
+				, round(sum(if(x.cls_yymm = cast(#{yymm} as unsigned) - 100, fin_amt, 0)), -1) as bef_sal_amt
+				, round(sum(if(x.cls_yymm = #{yymm}, fin_amt, 0)), -1) as aft_sal_amt
+				from (
+					select a.cls_yymm, round(b.fin_amt/#{ct},0) as fin_amt, c.acc_id
+					from tb_bo_pl_info a
+					left join tb_bo_pl_det_krw b 
+					  on b.pl_id = a.pl_id 
+					inner join tb_frm_info_det c 
+					  on c.frm_id = a.frm_id
+					 and c.row_seq = b.row_seq
+					 and c.acc_id = (select acc_id 
+						    from tb_acc_mgmt
+						    where acc_cd_nm = '매출액' 
+						    and acc_grp_cd = 2
+						  )
+					where a.bo_id = #{boId}
+					and a.cls_yymm in( cast(#{yymm} as unsigned) - 100, cast(#{yymm} as unsigned))
+					order by c.row_seq
+				) X
+				group by x.acc_id
+			) g
+			on g.acc_id = (select acc_id
+						    from tb_acc_mgmt
+						    where acc_cd_nm = '매출액' 
+						    and acc_grp_cd  = 2
+						  )
+			where acc_grp_cd = 2
+	</select>
+	
+
+  	
+</mapper>

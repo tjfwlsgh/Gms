@@ -1,0 +1,164 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+ 	@FileName    : IncSaleRetDao.java
+	@Date        	: 2022.03.10
+ 	@Author      : jokim
+ 	@Description : 매출실적 DAO DB Query Mapper xml
+ 	@History     :
+ -->
+<!DOCTYPE mapper
+    PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+    "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="com.lgl.gms.webapi.inc.persistence.dao.IncSaleRetDao">
+  	
+  	<!-- 법인 손익 매출실적 리스트 조회 -->
+	<select id="selectIncSaleRetList" resultType="com.lgl.gms.webapi.inc.dto.response.BoIncSaleRetResponse" parameterType="com.lgl.gms.webapi.inc.dto.request.BoIncRetRequest">
+		select bo_id
+				 , inc_yymm
+				 , def_cl
+				 , seq
+				 , bo_cust_cd
+				 , cust_nm
+				 , svc_typ
+				 , grp1_cd
+				 , grp2_cd
+				 , grp3_cd
+				 , sal_amt
+				 , sal_cst
+				 , seae_amt
+				 , lbr_cost
+				 , exp_amt
+				 , ifo_amt
+				 , fr_area
+				 , fr_sbu_area
+				 , to_sbu_area
+				 , fr_sbu_area
+				 , to_sbu_area
+				 , biz_cl_cd
+				 , biz_obj_cd
+				 , ret_dt
+				 , reg_dt
+				 , upd_dt
+				 , work_ip
+				 , reg_no
+				 , upd_no
+		from tb_bo_inc_ret_sal
+	  where bo_id = #{boId}
+		 and inc_yymm = #{incYymm}
+		 and def_cl = #{defCl}
+  	</select>
+  	
+  	<!-- 법인 손익 영업손익실적 상세 갯수 조회 -->
+	<select id="selectIncSaleRetDetCount" resultType="Integer" parameterType="com.lgl.gms.webapi.inc.dto.request.BoIncRetRequest">
+		select count(1)
+		  from tb_bo_inc_ret_sal_det
+		 where bo_id = #{boId}
+		  and inc_yymm = #{incYymm}
+		  and def_cl = #{defCl}
+  	</select>
+  	
+  	<!-- 매출실적삭제 -->
+  	<delete  id="deleteIncRetSal" parameterType="com.lgl.gms.webapi.inc.dto.request.BoIncRetRequest">
+  		delete from tb_bo_inc_ret_sal
+		where bo_id = #{boId}
+		  and inc_yymm = #{incYymm} 
+		  and def_cl = #{defCl}
+  		<if test="seq!=null and seq!=''">and seq=#{seq}</if>
+  	</delete>
+  	
+  	<!-- 매출실적 상세 삭제 -->
+  	<delete  id="deleteIncRetSalDet" parameterType="com.lgl.gms.webapi.inc.dto.request.BoIncRetRequest">
+  		delete from tb_bo_inc_ret_sal_det
+		where bo_id = #{boId}
+		   and inc_yymm = #{incYymm} 
+		   and def_cl = #{defCl}
+  		<if test="seq!=null and seq!=''"> and seq=#{seq}</if>		  
+  	</delete>
+  	
+	<!-- 법인 손익 매출실적 추가  -->
+   	<insert id="insertIncRetSal" parameterType="java.util.HashMap">
+   		
+   		insert into tb_bo_inc_ret_sal
+				(  bo_id
+				 , inc_yymm
+				 , def_cl
+				 , seq
+				 , bo_cust_cd
+				 , cust_nm
+				 , svc_typ
+				 , grp1_cd
+				 , grp2_cd
+				 , grp3_cd
+				 , sal_amt
+				 , sal_cst
+				 , seae_amt
+				 , lbr_cost
+				 , exp_amt
+				 , ifo_amt
+				 , fr_area
+				 , fr_sbu_area
+				 , to_sbu_area
+				 , biz_cl_cd
+				 , biz_obj_cd
+				 , work_ip
+				 , reg_no
+			  )
+			 values
+	        <foreach collection="itemList" item="item" index="index" separator=" , ">
+	           ( 
+	           	 #{item.boId}
+				 ,#{item.incYymm}
+				 ,#{item.defCl}
+				 ,(select ifnull(max(t.seq),0)+1 from tb_bo_inc_ret_sal t where t.bo_id=#{boId} and t.inc_yymm=#{incYymm} and t.def_cl=#{defCl})
+				 ,#{item.boCustCd}
+				 ,#{item.custNm}
+				 ,#{item.svcTyp}
+				 ,#{item.grp1Cd}
+				 ,#{item.grp2Cd}
+				 ,#{item.grp3Cd}
+				 ,#{item.salAmt}
+				 ,#{item.salCst}
+				 ,#{item.seaeAmt}
+				 ,#{item.lbrCost}
+				 ,#{item.expAmt}
+				 ,#{item.ifoAmt}
+				 ,#{item.frArea}
+				 ,#{item.frSbuArea}
+				 ,#{item.toSbuArea}
+				 ,#{item.bizClCd}
+				 ,#{item.bizObjCd}
+				 ,#{item.workIp}
+				 ,#{item.regNo}
+				)
+	        </foreach>
+
+  	</insert>   	
+  	
+  	<!-- 저장시 상세정보 프로시저-->
+	<parameterMap type="com.lgl.gms.webapi.inc.dto.request.BoIncRetRequest" id="incSalRetDetProcMap" >
+		<parameter property="boId" 	jdbcType="VARCHAR" javaType="java.lang.Integer" mode="IN" />
+		<parameter property="incYymm" jdbcType="VARCHAR" javaType="java.lang.String" mode="IN" />
+		<parameter property="defCl" jdbcType="VARCHAR" javaType="java.lang.String" mode="IN" />
+		<parameter property="rtn" jdbcType="VARCHAR" javaType="java.lang.String" mode="OUT" />
+	</parameterMap>
+	<select  id="procIncSalRetDet" parameterMap="incSalRetDetProcMap" statementType="CALLABLE">
+		<![CDATA[
+			{call sp_crt_inc_ret_sal_det(?, ?, ?, ?)}
+		]]>
+	</select>
+	
+	<!-- 매출실적정보헤더값 update 마감-->
+	<update id="updateIncSalRetCls" parameterType="com.lgl.gms.webapi.inc.persistence.model.BoIncRetModel">
+		update tb_bo_inc_ret a
+			set a.upd_dt = now()
+				, a.upd_no = #{updNo}
+				, a.ret_cls1='Y'
+		where bo_id = #{boId}
+		  and inc_yymm = #{incYymm}
+		  and def_cl = #{defCl}
+	</update>
+
+</mapper>
+
+

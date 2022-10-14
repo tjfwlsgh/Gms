@@ -1,0 +1,74 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+ 	@FileName    : code-mapper.java
+	@Date        :
+ 	@Author      :
+ 	@Description : DB Query Mapper xml
+ 	@History     :
+ -->
+<!DOCTYPE mapper
+    PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+    "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+    
+<mapper namespace="com.lgl.gms.webapi.cmm.persistence.dao.CommonCodeDao">
+
+  <!-- 공통코드 리스트 조회  -->
+    <select id="selectCommonCodeList" parameterType="com.lgl.gms.webapi.cmm.dto.request.CommonCodeRequest"
+        resultType="com.lgl.gms.webapi.cmm.dto.response.CommonCodeResponse" >
+	    select b.tccv_id 
+	         , b.std_cd
+	         , b.std_cd_nm
+	         , b.std_cd_nm_eng 
+	         , a.bse_cd
+	         , b.cd_val
+	      from tb_tcc a 
+	      join tb_tcc_val b on (a.tcc_id = b.tcc_id)
+	     where a.comp_id = 100
+	       and a.bse_cd = #{codeType}
+	       and (a.del_yn = 'N' and b.del_yn = 'N')
+	     order by b.view_seq
+    </select>
+
+  <!-- 권한코드 리스트 조회  -->
+    <select id="selectAuthCodeList" resultType="com.lgl.gms.webapi.cmm.dto.response.AuthCodeResponse" >
+		select auth_cd
+		     , auth_nm
+		     , auth_nm_eng
+		  from tb_auth_mgmt
+		 where del_yn = 'N'
+    </select>
+    
+  <!-- 통화코드 리스트 조회  -->
+    <select id="selectCurrencyCodeList" resultType="com.lgl.gms.webapi.cmm.dto.response.CurrencyCodeResponse" >
+		select crncy_cd
+		     , crncy_nm 
+		  from tb_crncy
+		 where use_yn = 'Y'
+		 order by view_seq 
+    </select>
+
+  <!-- 국가코드 리스트 조회  -->
+    <select id="selectCountryCodeList" resultType="com.lgl.gms.webapi.cmm.dto.response.CountryCodeResponse" >
+		 select cntry_cd
+		      , cntry_nm
+		      , iso_cntry_cd
+		      , crncy_cd 
+		 from tb_cntry
+		where use_yn = 'Y'
+		order by cntry_nm
+    </select>
+
+  <!-- 지역언어코드 리스트 조회  -->
+    <select id="selectLocaleCodeList" resultType="com.lgl.gms.webapi.cmm.dto.response.LocaleCodeResponse" >
+		select lng_cd
+		     , trrt_cd
+		     , lng_typ
+		     , lng_desc
+		  from tb_lng
+		 where use_yn = 'Y'
+		 order by view_seq 
+    </select>
+
+
+    
+</mapper>

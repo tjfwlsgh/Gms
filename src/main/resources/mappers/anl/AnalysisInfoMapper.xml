@@ -1,0 +1,514 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+ 	@FileName    : AnalysisInfoMapper.java
+	@Date        :
+ 	@Author      :
+ 	@Description : DB Query Mapper xml
+ 	@History     :
+ -->
+<!DOCTYPE mapper
+    PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+    "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="com.lgl.gms.webapi.anl.persistence.dao.AnalysisInfoDao">
+
+  	<!-- 법인 인원정보 조회  -->
+	<select id="selectEmpInfo" parameterType="com.lgl.gms.webapi.anl.dto.request.BoSummaryRequest"
+			resultType="com.lgl.gms.webapi.anl.dto.response.BoEmpInfo" >
+			SELECT
+				 if(SUM(c.cnt_1) is null, 0, SUM(c.cnt_1)) AS emp_resi_cnt
+				,if(SUM(c.cnt_2 + c.cnt_3) is null, 0, SUM(c.cnt_2 + c.cnt_3)) AS emp_local_cnt
+				,if(SUM(c.tot_cnt) is null, 0, SUM(c.tot_cnt)) AS emp_tot_cnt
+			FROM (
+				SELECT 
+					  a.bo_id
+					, SUM(IF(b.STD_CD = 1, 1, 0)) AS cnt_1
+					, SUM(IF(b.STD_CD = 2, 1, 0)) AS cnt_2
+					, SUM(IF(b.STD_CD = 3, 1, 0)) AS cnt_3
+					, SUM(1)                      AS tot_cnt
+				FROM tb_infra_bo_emp a
+				LEFT JOIN tb_tcc_val b
+				 	ON b.tccv_id = a.EMP_TYP_ID
+				WHERE 
+					a.BO_ID IN (
+						  		SELECT d.bo_id
+						  		  FROM tb_bo d
+						  		  WHERE d.bo_id =  IF(#{boId} = 0, d.bo_id, #{boId})
+						  OR d.pbo_id = #{boId}
+						)
+				  AND ( NULLIF(a.RGD, '') IS NULL OR SUBSTRING(a.RGD, 1, 6) >= CONCAT(#{incYy}, #{incMm}) )
+				GROUP BY a.bo_id
+			) c
+  	</select>
+
+   	<!-- 법인 매출액/영업이익(당월/누계) 조회  -->
+	<select id="selectSummaryAmtList" parameterType="com.lgl.gms.webapi.anl.dto.request.BoSummaryRequest"
+			resultType="com.lgl.gms.webapi.anl.dto.response.BoSummaryAmtInfo" > 
+		 SELECT
+			 E.INC_ITM1
+			,E.INC_ITM2
+			,E.INC_SEQ
+			,fn_edit_itm_nm(E.INC_SEQ, IF(E.INC_SEQ = 1, if(#{lang}='ko', E.INC_ITM1, E.INC_ITM1_ENG), if(#{lang}='ko', E.INC_ITM2, E.INC_ITM2_ENG)), '') AS ITM_NM
+			,E.BEF_RET
+			,E.AFT_PLN
+			,E.AFT_RET
+			,(E.AFT_RET - E.BEF_RET) AS increase_amt
+			,ROUND(IF(E.AFT_RET = 0, 0, (E.AFT_RET - E.BEF_RET) / E.BEF_RET * 100), 1) AS increase_rate
+			,ROUND(IF(E.AFT_PLN = 0, IF(E.AFT_RET = 0,  0, 100),
+										 (E.AFT_RET - E.AFT_PLN) / E.AFT_PLN * 100), 1) AS plan_rate
+		FROM (
+			SELECT
+				 D.INC_ITM1
+				,D.INC_ITM1_ENG
+				,D.INC_ITM_ID
+				,D.INC_SEQ
+				,D.INC_ITM2
+				,D.INC_ITM2_ENG
+				,SUM(IF(D.INC_YY = #{incYy} -1, IF(D.PLN_RET_CL ='P', MON_AMT, 0), 0)) AS BEF_PLN
+				,SUM(IF(D.INC_YY = #{incYy} -1, IF(D.PLN_RET_CL ='R', MON_AMT, 0), 0)) AS BEF_RET
+				,SUM(IF(D.INC_YY = #{incYy}   , IF(D.PLN_RET_CL ='P', MON_AMT, 0), 0)) AS AFT_PLN
+				,SUM(IF(D.INC_YY = #{incYy}   , IF(D.PLN_RET_CL ='R', MON_AMT, 0), 0)) AS AFT_RET
+			FROM (
+			   /* 매출액, 영업이익 */
+				SELECT
+				    a.bo_id 
+					,a.INC_ITM1
+					,a.INC_ITM1_ENG
+					,CASE WHEN a.INC_ITM1 = '매출액' THEN 2
+					      WHEN a.INC_ITM1 = '영업이익 I' THEN 2
+							ELSE 9
+					 END AS INC_SEQ
+					,a.INC_ITM2
+					,a.INC_ITM2_ENG
+					,a.INC_ITM_ID
+					,a.INC_YY
+					,a.PLN_RET_CL
+					<if test="sumryCl != null and sumryCl == '1'.toString()">
+						,  IF(#{incMm} = '01',(a.MON_01_AMT * IF(a.INC_YY = #{incYy} -1, IF(a.PLN_RET_CL = 'P', p.EXCHG_RATE_BEF, b.EXCHG_RATE_BEF), IF(a.PLN_RET_CL = 'P', p.EXCHG_RATE, b.EXCHG_RATE))) / 1000000,0)
+						 + IF(#{incMm} = '02',(a.MON_02_AMT * IF(a.INC_YY = #{incYy} -1, IF(a.PLN_RET_CL = 'P', p.EXCHG_RATE_BEF, b.EXCHG_RATE_BEF), IF(a.PLN_RET_CL = 'P', p.EXCHG_RATE, b.EXCHG_RATE))) / 1000000,0)
+						 + IF(#{incMm} = '03',(a.MON_03_AMT * IF(a.INC_YY = #{incYy} -1, IF(a.PLN_RET_CL = 'P', p.EXCHG_RATE_BEF, b.EXCHG_RATE_BEF), IF(a.PLN_RET_CL = 'P', p.EXCHG_RATE, b.EXCHG_RATE))) / 1000000,0)
+						 + IF(#{incMm} = '04',(a.MON_04_AMT * IF(a.INC_YY = #{incYy} -1, IF(a.PLN_RET_CL = 'P', p.EXCHG_RATE_BEF, b.EXCHG_RATE_BEF), IF(a.PLN_RET_CL = 'P', p.EXCHG_RATE, b.EXCHG_RATE))) / 1000000,0)
+						 + IF(#{incMm} = '05',(a.MON_05_AMT * IF(a.INC_YY = #{incYy} -1, IF(a.PLN_RET_CL = 'P', p.EXCHG_RATE_BEF, b.EXCHG_RATE_BEF), IF(a.PLN_RET_CL = 'P', p.EXCHG_RATE, b.EXCHG_RATE))) / 1000000,0)
+						 + IF(#{incMm} = '06',(a.MON_06_AMT * IF(a.INC_YY = #{incYy} -1, IF(a.PLN_RET_CL = 'P', p.EXCHG_RATE_BEF, b.EXCHG_RATE_BEF), IF(a.PLN_RET_CL = 'P', p.EXCHG_RATE, b.EXCHG_RATE))) / 1000000,0)
+						 + IF(#{incMm} = '07',(a.MON_07_AMT * IF(a.INC_YY = #{incYy} -1, IF(a.PLN_RET_CL = 'P', p.EXCHG_RATE_BEF, b.EXCHG_RATE_BEF), IF(a.PLN_RET_CL = 'P', p.EXCHG_RATE, b.EXCHG_RATE))) / 1000000,0)
+						 + IF(#{incMm} = '08',(a.MON_08_AMT * IF(a.INC_YY = #{incYy} -1, IF(a.PLN_RET_CL = 'P', p.EXCHG_RATE_BEF, b.EXCHG_RATE_BEF), IF(a.PLN_RET_CL = 'P', p.EXCHG_RATE, b.EXCHG_RATE))) / 1000000,0)
+						 + IF(#{incMm} = '09',(a.MON_09_AMT * IF(a.INC_YY = #{incYy} -1, IF(a.PLN_RET_CL = 'P', p.EXCHG_RATE_BEF, b.EXCHG_RATE_BEF), IF(a.PLN_RET_CL = 'P', p.EXCHG_RATE, b.EXCHG_RATE))) / 1000000,0)
+						 + IF(#{incMm} = '10',(a.MON_10_AMT * IF(a.INC_YY = #{incYy} -1, IF(a.PLN_RET_CL = 'P', p.EXCHG_RATE_BEF, b.EXCHG_RATE_BEF), IF(a.PLN_RET_CL = 'P', p.EXCHG_RATE, b.EXCHG_RATE))) / 1000000,0)
+						 + IF(#{incMm} = '11',(a.MON_11_AMT * IF(a.INC_YY = #{incYy} -1, IF(a.PLN_RET_CL = 'P', p.EXCHG_RATE_BEF, b.EXCHG_RATE_BEF), IF(a.PLN_RET_CL = 'P', p.EXCHG_RATE, b.EXCHG_RATE))) / 1000000,0)
+						 + IF(#{incMm} = '12',(a.MON_12_AMT * IF(a.INC_YY = #{incYy} -1, IF(a.PLN_RET_CL = 'P', p.EXCHG_RATE_BEF, b.EXCHG_RATE_BEF), IF(a.PLN_RET_CL = 'P', p.EXCHG_RATE, b.EXCHG_RATE))) / 1000000,0)
+						 AS MON_AMT
+					 </if>
+					<if test="sumryCl != null and sumryCl == '2'.toString()">
+						,  IF(#{incMm} >= '01',(a.MON_01_AMT * IF(a.INC_YY = #{incYy} -1, IF(a.PLN_RET_CL = 'P', p.EXCHG_RATE_BEF, b.EXCHG_RATE_BEF), IF(a.PLN_RET_CL = 'P', p.EXCHG_RATE, b.EXCHG_RATE))) / 1000000,0)
+						 + IF(#{incMm} >= '02',(a.MON_02_AMT * IF(a.INC_YY = #{incYy} -1, IF(a.PLN_RET_CL = 'P', p.EXCHG_RATE_BEF, b.EXCHG_RATE_BEF), IF(a.PLN_RET_CL = 'P', p.EXCHG_RATE, b.EXCHG_RATE))) / 1000000,0)
+						 + IF(#{incMm} >= '03',(a.MON_03_AMT * IF(a.INC_YY = #{incYy} -1, IF(a.PLN_RET_CL = 'P', p.EXCHG_RATE_BEF, b.EXCHG_RATE_BEF), IF(a.PLN_RET_CL = 'P', p.EXCHG_RATE, b.EXCHG_RATE))) / 1000000,0)
+						 + IF(#{incMm} >= '04',(a.MON_04_AMT * IF(a.INC_YY = #{incYy} -1, IF(a.PLN_RET_CL = 'P', p.EXCHG_RATE_BEF, b.EXCHG_RATE_BEF), IF(a.PLN_RET_CL = 'P', p.EXCHG_RATE, b.EXCHG_RATE))) / 1000000,0)
+						 + IF(#{incMm} >= '05',(a.MON_05_AMT * IF(a.INC_YY = #{incYy} -1, IF(a.PLN_RET_CL = 'P', p.EXCHG_RATE_BEF, b.EXCHG_RATE_BEF), IF(a.PLN_RET_CL = 'P', p.EXCHG_RATE, b.EXCHG_RATE))) / 1000000,0)
+						 + IF(#{incMm} >= '06',(a.MON_06_AMT * IF(a.INC_YY = #{incYy} -1, IF(a.PLN_RET_CL = 'P', p.EXCHG_RATE_BEF, b.EXCHG_RATE_BEF), IF(a.PLN_RET_CL = 'P', p.EXCHG_RATE, b.EXCHG_RATE))) / 1000000,0)
+						 + IF(#{incMm} >= '07',(a.MON_07_AMT * IF(a.INC_YY = #{incYy} -1, IF(a.PLN_RET_CL = 'P', p.EXCHG_RATE_BEF, b.EXCHG_RATE_BEF), IF(a.PLN_RET_CL = 'P', p.EXCHG_RATE, b.EXCHG_RATE))) / 1000000,0)
+						 + IF(#{incMm} >= '08',(a.MON_08_AMT * IF(a.INC_YY = #{incYy} -1, IF(a.PLN_RET_CL = 'P', p.EXCHG_RATE_BEF, b.EXCHG_RATE_BEF), IF(a.PLN_RET_CL = 'P', p.EXCHG_RATE, b.EXCHG_RATE))) / 1000000,0)
+						 + IF(#{incMm} >= '09',(a.MON_09_AMT * IF(a.INC_YY = #{incYy} -1, IF(a.PLN_RET_CL = 'P', p.EXCHG_RATE_BEF, b.EXCHG_RATE_BEF), IF(a.PLN_RET_CL = 'P', p.EXCHG_RATE, b.EXCHG_RATE))) / 1000000,0)
+						 + IF(#{incMm} >= '10',(a.MON_10_AMT * IF(a.INC_YY = #{incYy} -1, IF(a.PLN_RET_CL = 'P', p.EXCHG_RATE_BEF, b.EXCHG_RATE_BEF), IF(a.PLN_RET_CL = 'P', p.EXCHG_RATE, b.EXCHG_RATE))) / 1000000,0)
+						 + IF(#{incMm} >= '11',(a.MON_11_AMT * IF(a.INC_YY = #{incYy} -1, IF(a.PLN_RET_CL = 'P', p.EXCHG_RATE_BEF, b.EXCHG_RATE_BEF), IF(a.PLN_RET_CL = 'P', p.EXCHG_RATE, b.EXCHG_RATE))) / 1000000,0)
+						 + IF(#{incMm} >= '12',(a.MON_12_AMT * IF(a.INC_YY = #{incYy} -1, IF(a.PLN_RET_CL = 'P', p.EXCHG_RATE_BEF, b.EXCHG_RATE_BEF), IF(a.PLN_RET_CL = 'P', p.EXCHG_RATE, b.EXCHG_RATE))) / 1000000,0)
+						 AS MON_AMT
+					</if>
+					,'KRW' AS CRNCY_CD
+				FROM vw_bo_inc_agg_summy a
+				
+				LEFT JOIN (
+							SELECT t.CRNCY_CD
+								 , MAX(IF(YYYY = #{incYy} -1, M${incMm}_EXR, NULL)) AS EXCHG_RATE_BEF
+								 , MAX(IF(YYYY= #{incYy}, M${incMm}_EXR, NULL)) AS EXCHG_RATE
+							FROM VW_EXCHG_RATE_YY_RET t
+							WHERE YYYY IN (#{incYy} -1, #{incYy})
+							GROUP BY CRNCY_CD
+						) b on b.CRNCY_CD = a.CRNCY_CD
+						
+				LEFT JOIN (
+							SELECT t.CRNCY_CD
+								 , MAX(IF(YYYY = #{incYy} -1, M${incMm}_EXR, NULL)) AS EXCHG_RATE_BEF
+								 , MAX(IF(YYYY= #{incYy}, M${incMm}_EXR, NULL)) AS EXCHG_RATE
+							FROM VW_EXCHG_RATE_YY_PLN t
+							WHERE YYYY IN (#{incYy} -1, #{incYy})
+							GROUP BY CRNCY_CD
+						) p on p.CRNCY_CD = a.CRNCY_CD
+				 
+				JOIN tb_bo c
+				 ON c.bo_id = a.bo_id
+				 AND c.BO_CL = IF(#{boId} = 0, 'H', c.BO_CL)
+				WHERE 1=1
+				 and a.bo_id = IF(#{boId} = 0, a.bo_id, #{boId}) 
+				 and a.inc_yy in ( #{incYy} -1 , #{incYy})
+				 
+		      UNION ALL
+		      
+		      /* 합계 */
+				SELECT 
+					 a.bo_id 
+					,a.INC_ITM1
+					,a.INC_ITM1_ENG
+					,1 AS INC_SEQ 
+					,'합계' AS INC_ITM2
+					,'SUM' AS INC_ITM2_ENG
+					,a.INC_ITM_ID
+					,a.INC_YY
+					,a.PLN_RET_CL
+					<if test="sumryCl != null and sumryCl == '1'.toString()">		
+						,  IF(#{incMm} = '01',(a.MON_01_AMT * IF(a.INC_YY = #{incYy} -1, IF(a.PLN_RET_CL = 'P', p.EXCHG_RATE_BEF, b.EXCHG_RATE_BEF), IF(a.PLN_RET_CL = 'P', p.EXCHG_RATE, b.EXCHG_RATE))) / 1000000,0)
+						 + IF(#{incMm} = '02',(a.MON_02_AMT * IF(a.INC_YY = #{incYy} -1, IF(a.PLN_RET_CL = 'P', p.EXCHG_RATE_BEF, b.EXCHG_RATE_BEF), IF(a.PLN_RET_CL = 'P', p.EXCHG_RATE, b.EXCHG_RATE))) / 1000000,0)
+						 + IF(#{incMm} = '03',(a.MON_03_AMT * IF(a.INC_YY = #{incYy} -1, IF(a.PLN_RET_CL = 'P', p.EXCHG_RATE_BEF, b.EXCHG_RATE_BEF), IF(a.PLN_RET_CL = 'P', p.EXCHG_RATE, b.EXCHG_RATE))) / 1000000,0)
+						 + IF(#{incMm} = '04',(a.MON_04_AMT * IF(a.INC_YY = #{incYy} -1, IF(a.PLN_RET_CL = 'P', p.EXCHG_RATE_BEF, b.EXCHG_RATE_BEF), IF(a.PLN_RET_CL = 'P', p.EXCHG_RATE, b.EXCHG_RATE))) / 1000000,0)
+						 + IF(#{incMm} = '05',(a.MON_05_AMT * IF(a.INC_YY = #{incYy} -1, IF(a.PLN_RET_CL = 'P', p.EXCHG_RATE_BEF, b.EXCHG_RATE_BEF), IF(a.PLN_RET_CL = 'P', p.EXCHG_RATE, b.EXCHG_RATE))) / 1000000,0)
+						 + IF(#{incMm} = '06',(a.MON_06_AMT * IF(a.INC_YY = #{incYy} -1, IF(a.PLN_RET_CL = 'P', p.EXCHG_RATE_BEF, b.EXCHG_RATE_BEF), IF(a.PLN_RET_CL = 'P', p.EXCHG_RATE, b.EXCHG_RATE))) / 1000000,0)
+						 + IF(#{incMm} = '07',(a.MON_07_AMT * IF(a.INC_YY = #{incYy} -1, IF(a.PLN_RET_CL = 'P', p.EXCHG_RATE_BEF, b.EXCHG_RATE_BEF), IF(a.PLN_RET_CL = 'P', p.EXCHG_RATE, b.EXCHG_RATE))) / 1000000,0)
+						 + IF(#{incMm} = '08',(a.MON_08_AMT * IF(a.INC_YY = #{incYy} -1, IF(a.PLN_RET_CL = 'P', p.EXCHG_RATE_BEF, b.EXCHG_RATE_BEF), IF(a.PLN_RET_CL = 'P', p.EXCHG_RATE, b.EXCHG_RATE))) / 1000000,0)
+						 + IF(#{incMm} = '09',(a.MON_09_AMT * IF(a.INC_YY = #{incYy} -1, IF(a.PLN_RET_CL = 'P', p.EXCHG_RATE_BEF, b.EXCHG_RATE_BEF), IF(a.PLN_RET_CL = 'P', p.EXCHG_RATE, b.EXCHG_RATE))) / 1000000,0)
+						 + IF(#{incMm} = '10',(a.MON_10_AMT * IF(a.INC_YY = #{incYy} -1, IF(a.PLN_RET_CL = 'P', p.EXCHG_RATE_BEF, b.EXCHG_RATE_BEF), IF(a.PLN_RET_CL = 'P', p.EXCHG_RATE, b.EXCHG_RATE))) / 1000000,0)
+						 + IF(#{incMm} = '11',(a.MON_11_AMT * IF(a.INC_YY = #{incYy} -1, IF(a.PLN_RET_CL = 'P', p.EXCHG_RATE_BEF, b.EXCHG_RATE_BEF), IF(a.PLN_RET_CL = 'P', p.EXCHG_RATE, b.EXCHG_RATE))) / 1000000,0)
+						 + IF(#{incMm} = '12',(a.MON_12_AMT * IF(a.INC_YY = #{incYy} -1, IF(a.PLN_RET_CL = 'P', p.EXCHG_RATE_BEF, b.EXCHG_RATE_BEF), IF(a.PLN_RET_CL = 'P', p.EXCHG_RATE, b.EXCHG_RATE))) / 1000000,0)
+						 AS MON_AMT
+					</if>
+					<if test="sumryCl != null and sumryCl == '2'.toString()">		
+						,  IF(#{incMm} >= '01',(a.MON_01_AMT * IF(a.INC_YY = #{incYy} -1, IF(a.PLN_RET_CL = 'P', p.EXCHG_RATE_BEF, b.EXCHG_RATE_BEF), IF(a.PLN_RET_CL = 'P', p.EXCHG_RATE, b.EXCHG_RATE))) / 1000000,0)
+						 + IF(#{incMm} >= '02',(a.MON_02_AMT * IF(a.INC_YY = #{incYy} -1, IF(a.PLN_RET_CL = 'P', p.EXCHG_RATE_BEF, b.EXCHG_RATE_BEF), IF(a.PLN_RET_CL = 'P', p.EXCHG_RATE, b.EXCHG_RATE))) / 1000000,0)
+						 + IF(#{incMm} >= '03',(a.MON_03_AMT * IF(a.INC_YY = #{incYy} -1, IF(a.PLN_RET_CL = 'P', p.EXCHG_RATE_BEF, b.EXCHG_RATE_BEF), IF(a.PLN_RET_CL = 'P', p.EXCHG_RATE, b.EXCHG_RATE))) / 1000000,0)
+						 + IF(#{incMm} >= '04',(a.MON_04_AMT * IF(a.INC_YY = #{incYy} -1, IF(a.PLN_RET_CL = 'P', p.EXCHG_RATE_BEF, b.EXCHG_RATE_BEF), IF(a.PLN_RET_CL = 'P', p.EXCHG_RATE, b.EXCHG_RATE))) / 1000000,0)
+						 + IF(#{incMm} >= '05',(a.MON_05_AMT * IF(a.INC_YY = #{incYy} -1, IF(a.PLN_RET_CL = 'P', p.EXCHG_RATE_BEF, b.EXCHG_RATE_BEF), IF(a.PLN_RET_CL = 'P', p.EXCHG_RATE, b.EXCHG_RATE))) / 1000000,0)
+						 + IF(#{incMm} >= '06',(a.MON_06_AMT * IF(a.INC_YY = #{incYy} -1, IF(a.PLN_RET_CL = 'P', p.EXCHG_RATE_BEF, b.EXCHG_RATE_BEF), IF(a.PLN_RET_CL = 'P', p.EXCHG_RATE, b.EXCHG_RATE))) / 1000000,0)
+						 + IF(#{incMm} >= '07',(a.MON_07_AMT * IF(a.INC_YY = #{incYy} -1, IF(a.PLN_RET_CL = 'P', p.EXCHG_RATE_BEF, b.EXCHG_RATE_BEF), IF(a.PLN_RET_CL = 'P', p.EXCHG_RATE, b.EXCHG_RATE))) / 1000000,0)
+						 + IF(#{incMm} >= '08',(a.MON_08_AMT * IF(a.INC_YY = #{incYy} -1, IF(a.PLN_RET_CL = 'P', p.EXCHG_RATE_BEF, b.EXCHG_RATE_BEF), IF(a.PLN_RET_CL = 'P', p.EXCHG_RATE, b.EXCHG_RATE))) / 1000000,0)
+						 + IF(#{incMm} >= '09',(a.MON_09_AMT * IF(a.INC_YY = #{incYy} -1, IF(a.PLN_RET_CL = 'P', p.EXCHG_RATE_BEF, b.EXCHG_RATE_BEF), IF(a.PLN_RET_CL = 'P', p.EXCHG_RATE, b.EXCHG_RATE))) / 1000000,0)
+						 + IF(#{incMm} >= '10',(a.MON_10_AMT * IF(a.INC_YY = #{incYy} -1, IF(a.PLN_RET_CL = 'P', p.EXCHG_RATE_BEF, b.EXCHG_RATE_BEF), IF(a.PLN_RET_CL = 'P', p.EXCHG_RATE, b.EXCHG_RATE))) / 1000000,0)
+						 + IF(#{incMm} >= '11',(a.MON_11_AMT * IF(a.INC_YY = #{incYy} -1, IF(a.PLN_RET_CL = 'P', p.EXCHG_RATE_BEF, b.EXCHG_RATE_BEF), IF(a.PLN_RET_CL = 'P', p.EXCHG_RATE, b.EXCHG_RATE))) / 1000000,0)
+						 + IF(#{incMm} >= '12',(a.MON_12_AMT * IF(a.INC_YY = #{incYy} -1, IF(a.PLN_RET_CL = 'P', p.EXCHG_RATE_BEF, b.EXCHG_RATE_BEF), IF(a.PLN_RET_CL = 'P', p.EXCHG_RATE, b.EXCHG_RATE))) / 1000000,0)
+						 AS MON_AMT
+					</if>
+					,'KRW' AS CRNCY_CD
+				FROM vw_bo_inc_agg_summy a
+				LEFT JOIN (
+							SELECT t.CRNCY_CD
+								 , MAX(IF(YYYY = #{incYy} -1, M${incMm}_EXR, NULL)) AS EXCHG_RATE_BEF
+								 , MAX(IF(YYYY= #{incYy}, M${incMm}_EXR, NULL)) AS EXCHG_RATE
+							FROM VW_EXCHG_RATE_YY_RET t
+							WHERE YYYY IN (#{incYy} -1, #{incYy})
+							GROUP BY CRNCY_CD
+						) b on b.CRNCY_CD = a.CRNCY_CD
+				
+				LEFT JOIN (
+							SELECT t.CRNCY_CD
+								 , MAX(IF(YYYY = #{incYy} -1, M${incMm}_EXR, NULL)) AS EXCHG_RATE_BEF
+								 , MAX(IF(YYYY= #{incYy}, M${incMm}_EXR, NULL)) AS EXCHG_RATE
+							FROM VW_EXCHG_RATE_YY_PLN t
+							WHERE YYYY IN (#{incYy} -1, #{incYy})
+							GROUP BY CRNCY_CD
+						) p on p.CRNCY_CD = a.CRNCY_CD
+				 
+				JOIN tb_bo c
+				 ON c.bo_id = a.bo_id
+				 AND c.BO_CL = IF(#{boId} = 0, 'H', c.BO_CL)
+				WHERE 1=1
+				 and a.bo_id = IF(#{boId} = 0, a.bo_id, #{boId}) 
+				 and a.inc_yy in (#{incYy} -1 , #{incYy})
+			) D
+			GROUP BY D.INC_ITM1, D.INC_SEQ, D.INC_ITM2
+		) E
+	</select>
+ 
+  	 	
+  	<!-- 거래처 매출분석 정보 조회(n건)  -->
+	<select id="selectCustPerfList" parameterType="com.lgl.gms.webapi.anl.dto.request.CustPerfRequest"
+			resultType="com.lgl.gms.webapi.anl.dto.response.CustPerfResponse" >
+		SELECT
+			 X.BO_CUST_CD                    -- 법인 거래처 코드
+			,X.CUST_NM                       -- 법인 거래처명
+			,(@RANK := @RANK + 1) as RANK    -- 순위
+			,X.SAL_AMT                       -- 매출액
+			,concat(round(( 100.0 * X.SAL_AMT/F.MAX_SAL_AMT),1),'%') AS SAL_PER -- 매출액 비율
+			,(@va := @va + X.SAL_AMT) as cumsum_SAL_AMT
+			,concat(round(( @va/F.MAX_SAL_AMT * 100 ),1),'%') AS cumsum_SAL_AMT_PER -- 수익합계 누계율
+		 FROM (
+				SELECT
+				 C.BO_CUST_CD
+				,E.CUST_NM
+				,SUM(C.AMT1) AS SAL_AMT
+				FROM ( 
+					SELECT 
+					 BO_CUST_CD
+					,INC_ITM_ID
+					,SUM(
+					  CASE WHEN #{incMm} = '01' THEN MON_01_AMT
+					       WHEN #{incMm} = '02' THEN MON_02_AMT
+					       WHEN #{incMm} = '03' THEN MON_03_AMT
+					       WHEN #{incMm} = '04' THEN MON_04_AMT
+					       WHEN #{incMm} = '05' THEN MON_05_AMT
+					       WHEN #{incMm} = '06' THEN MON_06_AMT
+					       WHEN #{incMm} = '07' THEN MON_07_AMT
+					       WHEN #{incMm} = '08' THEN MON_08_AMT
+					       WHEN #{incMm} = '09' THEN MON_10_AMT
+					       WHEN #{incMm} = '10' THEN MON_10_AMT
+					       WHEN #{incMm} = '11' THEN MON_11_AMT
+					       WHEN #{incMm} = '12' THEN MON_12_AMT
+					  ELSE 0
+					  END
+					 ) AS AMT1
+					FROM tb_bo_inc_cust_agg a
+					WHERE a.BO_ID    	 = #{boId}
+					AND 	a.INC_YY     = #{incYy}
+					AND 	a.PLN_RET_CL = 'R'  /* 실적데이터 */
+					AND 	a.DEF_CL 	 = #{defCl}
+					AND     a.INC_ITM_ID IN (
+						SELECT B.SUB_INC_ITM_ID
+						FROM  tb_inc_itm_info A
+						INNER JOIN vw_inc_itm_info_sub_map B
+						  ON B.INC_ITM_ID = A.INC_ITM_ID
+						WHERE A.COMP_ID = #{compId}
+						AND   A.INC_ITM1 = '매출액' 
+						AND   A.LV_CL = 1
+					)
+					GROUP BY BO_CUST_CD ,INC_ITM_ID
+				) C
+		
+				LEFT JOIN tb_bo_cust E
+				  ON E.bo_id = #{boId}
+				 AND E.BO_CUST_CD = C.BO_CUST_CD
+				GROUP BY  C.BO_CUST_CD, E.CUST_NM
+				ORDER BY  3 DESC
+			) X
+			LEFT JOIN (
+				SELECT  C.BO_CUST_CD, SUM(C.AMT1) AS MAX_SAL_AMT
+				FROM ( 
+					SELECT 
+					 'TOT' AS BO_CUST_CD
+					,SUM(
+					  CASE WHEN #{incMm} = '01' THEN MON_01_AMT
+					       WHEN #{incMm} = '02' THEN MON_02_AMT
+					       WHEN #{incMm} = '03' THEN MON_03_AMT
+					       WHEN #{incMm} = '04' THEN MON_04_AMT
+					       WHEN #{incMm} = '05' THEN MON_05_AMT
+					       WHEN #{incMm} = '06' THEN MON_06_AMT
+					       WHEN #{incMm} = '07' THEN MON_07_AMT
+					       WHEN #{incMm} = '08' THEN MON_08_AMT
+					       WHEN #{incMm} = '09' THEN MON_10_AMT
+					       WHEN #{incMm} = '10' THEN MON_10_AMT
+					       WHEN #{incMm} = '11' THEN MON_11_AMT
+					       WHEN #{incMm} = '12' THEN MON_12_AMT
+					  ELSE 0
+					  END
+					 ) AS AMT1
+					FROM tb_bo_inc_cust_agg a
+					WHERE a.BO_ID    	 = #{boId}
+					AND 	a.INC_YY     = #{incYy}
+					AND 	a.PLN_RET_CL = 'R'  /* 실적데이터 */
+					AND 	a.DEF_CL 	 = #{defCl}
+					AND     a.INC_ITM_ID IN (
+						SELECT B.SUB_INC_ITM_ID
+						FROM  tb_inc_itm_info A
+						INNER JOIN vw_inc_itm_info_sub_map B
+						  ON B.INC_ITM_ID = A.INC_ITM_ID
+						WHERE A.COMP_ID = 100
+						AND   A.INC_ITM1 = '매출액' 
+						AND   A.LV_CL = 1
+					)
+				) C
+				GROUP BY C.BO_CUST_CD
+			) F
+			ON F.BO_CUST_CD = 'TOT'
+		 , ( select @va := 0, @rank := 0 ) z
+				
+  	</select>
+  	
+  	 <!-- 영업이익 추이 - 매출액/영업이익 조회  -->
+	<select id="selectSalesProfAmtList" parameterType="com.lgl.gms.webapi.anl.dto.request.BusiProfRequest"
+				resultType="com.lgl.gms.webapi.anl.dto.response.BusiProfAmtInfo" >
+		SELECT 
+			 b.INC_YY
+			,a.INC_ITM1
+			,ROUND(SUM(IF(#{incMm} >= '01', b.MON_01_AMT,0))/#{ct}, 2) AS MON_01_AMT
+			,ROUND(SUM(IF(#{incMm} >= '02', b.MON_02_AMT,0))/#{ct}, 2) AS MON_02_AMT
+			,ROUND(SUM(IF(#{incMm} >= '03', b.MON_03_AMT,0))/#{ct}, 2) AS MON_03_AMT
+			,ROUND(SUM(IF(#{incMm} >= '04', b.MON_04_AMT,0))/#{ct}, 2) AS MON_04_AMT
+			,ROUND(SUM(IF(#{incMm} >= '05', b.MON_05_AMT,0))/#{ct}, 2) AS MON_05_AMT
+			,ROUND(SUM(IF(#{incMm} >= '06', b.MON_06_AMT,0))/#{ct}, 2) AS MON_06_AMT
+			,ROUND(SUM(IF(#{incMm} >= '07', b.MON_07_AMT,0))/#{ct}, 2) AS MON_07_AMT
+			,ROUND(SUM(IF(#{incMm} >= '08', b.MON_08_AMT,0))/#{ct}, 2) AS MON_08_AMT
+			,ROUND(SUM(IF(#{incMm} >= '09', b.MON_09_AMT,0))/#{ct}, 2) AS MON_09_AMT
+			,ROUND(SUM(IF(#{incMm} >= '10', b.MON_10_AMT,0))/#{ct}, 2) AS MON_10_AMT
+			,ROUND(SUM(IF(#{incMm} >= '11', b.MON_11_AMT,0))/#{ct}, 2) AS MON_11_AMT
+			,ROUND(SUM(IF(#{incMm} >= '12', b.MON_12_AMT,0))/#{ct}, 2) AS MON_12_AMT
+		FROM tb_inc_itm_info a
+		INNER JOIN tb_bo_inc_agg b
+			ON b.BO_ID = #{boId}
+			AND b.INC_YY BETWEEN cast(#{incYy} as UNSIGNED) - 2 AND cast(#{incYy} as UNSIGNED)
+			AND b.PLN_RET_CL ='R'
+			AND b.DEF_CL = (
+				SELECT MAX(c.DEF_CL)
+				from tb_bo_inc_agg c
+				WHERE c.BO_ID = #{boId}
+				AND c.INC_YY = b.INC_YY
+				AND c.PLN_RET_CL ='R'
+			)
+			AND b.INC_ITM_ID = a.INC_ITM_ID	
+		WHERE a.INC_ITM1 =  #{incItm1}
+		AND  a.INC_ITM2 =  IF(#{incItm2} = '--', a.INC_ITM2, #{incItm2})
+		AND a.LV_CL = 2
+		GROUP BY b.INC_YY,a.INC_ITM1
+	
+  	</select>
+
+  	 <!-- 영업이익 추이 - 매출액/영업이익(누계) 조회  -->
+	<select id="selectCumSalesProfAmtList" parameterType="com.lgl.gms.webapi.anl.dto.request.BusiProfRequest"
+				resultType="com.lgl.gms.webapi.anl.dto.response.BusiProfAmtInfo" >
+		SELECT 
+			 C.INC_YY
+			,C.INC_ITM1
+			,ROUND((@va1  := 	     C.MON_01_AMT)/#{ct},2) 	AS MON_01_AMT
+			,ROUND((@va2  := @va1  + C.MON_02_AMT)/#{ct},2) 	AS MON_02_AMT
+			,ROUND((@va3  := @va2  + C.MON_03_AMT)/#{ct},2) 	AS MON_03_AMT
+			,ROUND((@va4  := @va3  + C.MON_04_AMT)/#{ct},2) 	AS MON_04_AMT
+			,ROUND((@va5  := @va4  + C.MON_05_AMT)/#{ct},2) 	AS MON_05_AMT
+			,ROUND((@va6  := @va5  + C.MON_06_AMT)/#{ct},2) 	AS MON_06_AMT
+			,ROUND((@va7  := @va6  + C.MON_07_AMT)/#{ct},2) 	AS MON_07_AMT
+			,ROUND((@va8  := @va7  + C.MON_08_AMT)/#{ct},2) 	AS MON_08_AMT
+			,ROUND((@va9  := @va8  + C.MON_09_AMT)/#{ct},2) 	AS MON_09_AMT
+			,ROUND((@va10 := @va9  + C.MON_10_AMT)/#{ct},2) 	AS MON_10_AMT
+			,ROUND((@va11 := @va10 + C.MON_11_AMT)/#{ct},2) 	AS MON_11_AMT
+			,ROUND((@va12 := @va11 + C.MON_12_AMT)/#{ct},2) 	AS MON_12_AMT
+		FROM (
+			SELECT 
+			b.INC_YY
+			,a.INC_ITM1
+			,SUM((IF(#{incMm} >= '01', b.MON_01_AMT,0))) as MON_01_AMT
+			,SUM((IF(#{incMm} >= '02', b.MON_02_AMT,0))) as MON_02_AMT
+			,SUM((IF(#{incMm} >= '03', b.MON_03_AMT,0))) as MON_03_AMT
+			,SUM((IF(#{incMm} >= '04', b.MON_04_AMT,0))) as MON_04_AMT
+			,SUM((IF(#{incMm} >= '05', b.MON_05_AMT,0))) as MON_05_AMT
+			,SUM((IF(#{incMm} >= '06', b.MON_06_AMT,0))) as MON_06_AMT
+			,SUM((IF(#{incMm} >= '07', b.MON_07_AMT,0))) as MON_07_AMT
+			,SUM((IF(#{incMm} >= '08', b.MON_08_AMT,0))) as MON_08_AMT
+			,SUM((IF(#{incMm} >= '09', b.MON_09_AMT,0))) as MON_09_AMT
+			,SUM((IF(#{incMm} >= '10', b.MON_10_AMT,0))) as MON_10_AMT
+			,SUM((IF(#{incMm} >= '11', b.MON_11_AMT,0))) as MON_11_AMT
+			,SUM((IF(#{incMm} >= '12', b.MON_12_AMT,0))) as MON_12_AMT
+			FROM tb_inc_itm_info a
+			LEFT JOIN tb_bo_inc_agg b
+				ON b.BO_ID = #{boId}
+				AND b.INC_YY BETWEEN cast(#{incYy} as UNSIGNED) - 2 AND cast(#{incYy} as UNSIGNED)
+				AND b.PLN_RET_CL ='R'
+				AND b.DEF_CL = (
+					SELECT MAX(c.DEF_CL)
+					from tb_bo_inc_agg c
+					WHERE c.BO_ID = #{boId}
+					AND c.INC_YY = b.INC_YY
+					AND c.PLN_RET_CL ='R'
+				)
+				AND b.INC_ITM_ID = a.INC_ITM_ID	
+			WHERE a.INC_ITM1 = #{incItm1}
+			AND  a.INC_ITM2 =  IF(#{incItm2} = '--', a.INC_ITM2, #{incItm2})
+			AND a.LV_CL = 2
+			GROUP BY b.INC_YY, a.INC_ITM1
+		) C
+		, (select @va1 := 0, @va2 := 0, @va3 := 0, @va4 := 0, @va5 := 0, @va6 := 0
+		        , @va7 := 0, @va8 := 0, @va9 := 0, @va10 := 0, @va11 := 0, @va12 := 0) x
+	
+  	</select>
+  	
+  	 <!-- 영업이익 추이 - 영업이익/영업비용 조회  -->
+	<select id="selectBusiProfExpAmtList" parameterType="com.lgl.gms.webapi.anl.dto.request.BusiProfRequest"
+				resultType="com.lgl.gms.webapi.anl.dto.response.BusiProfAmtInfo" >
+		SELECT 
+			 b.INC_YY
+			,a.INC_ITM1
+			,ROUND(SUM(IF(#{incMm} >= '01', b.MON_01_AMT,0))/#{ct}, 2) AS MON_01_AMT
+			,ROUND(SUM(IF(#{incMm} >= '02', b.MON_02_AMT,0))/#{ct}, 2) AS MON_02_AMT
+			,ROUND(SUM(IF(#{incMm} >= '03', b.MON_03_AMT,0))/#{ct}, 2) AS MON_03_AMT
+			,ROUND(SUM(IF(#{incMm} >= '04', b.MON_04_AMT,0))/#{ct}, 2) AS MON_04_AMT
+			,ROUND(SUM(IF(#{incMm} >= '05', b.MON_05_AMT,0))/#{ct}, 2) AS MON_05_AMT
+			,ROUND(SUM(IF(#{incMm} >= '06', b.MON_06_AMT,0))/#{ct}, 2) AS MON_06_AMT
+			,ROUND(SUM(IF(#{incMm} >= '07', b.MON_07_AMT,0))/#{ct}, 2) AS MON_07_AMT
+			,ROUND(SUM(IF(#{incMm} >= '08', b.MON_08_AMT,0))/#{ct}, 2) AS MON_08_AMT
+			,ROUND(SUM(IF(#{incMm} >= '09', b.MON_09_AMT,0))/#{ct}, 2) AS MON_09_AMT
+			,ROUND(SUM(IF(#{incMm} >= '10', b.MON_10_AMT,0))/#{ct}, 2) AS MON_10_AMT
+			,ROUND(SUM(IF(#{incMm} >= '11', b.MON_11_AMT,0))/#{ct}, 2) AS MON_11_AMT
+			,ROUND(SUM(IF(#{incMm} >= '12', b.MON_12_AMT,0))/#{ct}, 2) AS MON_12_AMT
+		FROM tb_inc_itm_info a
+		INNER JOIN tb_bo_inc_agg b
+			ON b.BO_ID = #{boId}
+			AND b.INC_YY = cast(#{incYy} as UNSIGNED)
+			AND b.PLN_RET_CL ='R'
+			AND b.DEF_CL = (
+				SELECT MAX(c.DEF_CL)
+				from tb_bo_inc_agg c
+				WHERE c.BO_ID = #{boId}
+				AND c.INC_YY = b.INC_YY
+				AND c.PLN_RET_CL ='R'
+				AND c.INC_YY = #{incYy}
+			)
+			AND b.INC_ITM_ID = a.INC_ITM_ID	
+		WHERE a.INC_ITM1 IN ( #{incItm1}, #{incItm12})
+		AND  a.INC_ITM2 =  IF(#{incItm2} = '--', a.INC_ITM2, #{incItm2})
+		AND a.LV_CL = 2
+		GROUP BY b.INC_YY, a.INC_ITM1
+	
+  	</select>
+
+  	 <!-- 영업이익 추이 - 영업이익/영업비용(누계) 조회  -->
+	<select id="selectCumBusiProfExpAmtList" parameterType="com.lgl.gms.webapi.anl.dto.request.BusiProfRequest"
+				resultType="com.lgl.gms.webapi.anl.dto.response.BusiProfAmtInfo" >
+		SELECT 
+			 C.INC_YY
+			,C.INC_ITM1
+			,ROUND((@va1  := 		 C.MON_01_AMT)/#{ct},2) 	AS MON_01_AMT
+			,ROUND((@va2  := @va1  + C.MON_02_AMT)/#{ct},2) 	AS MON_02_AMT
+			,ROUND((@va3  := @va2  + C.MON_03_AMT)/#{ct},2) 	AS MON_03_AMT
+			,ROUND((@va4  := @va3  + C.MON_04_AMT)/#{ct},2) 	AS MON_04_AMT
+			,ROUND((@va5  := @va4  + C.MON_05_AMT)/#{ct},2) 	AS MON_05_AMT
+			,ROUND((@va6  := @va5  + C.MON_06_AMT)/#{ct},2) 	AS MON_06_AMT
+			,ROUND((@va7  := @va6  + C.MON_07_AMT)/#{ct},2) 	AS MON_07_AMT
+			,ROUND((@va8  := @va7  + C.MON_08_AMT)/#{ct},2) 	AS MON_08_AMT
+			,ROUND((@va9  := @va8  + C.MON_09_AMT)/#{ct},2) 	AS MON_09_AMT
+			,ROUND((@va10 := @va9  + C.MON_10_AMT)/#{ct},2) 	AS MON_10_AMT
+			,ROUND((@va11 := @va10 + C.MON_11_AMT)/#{ct},2) 	AS MON_11_AMT
+			,ROUND((@va12 := @va11 + C.MON_12_AMT)/#{ct},2) 	AS MON_12_AMT
+		FROM (
+			SELECT 
+			b.INC_YY
+			,a.INC_ITM1
+			,SUM((IF(#{incMm} >= '01', b.MON_01_AMT,0))) as MON_01_AMT
+			,SUM((IF(#{incMm} >= '02', b.MON_02_AMT,0))) as MON_02_AMT
+			,SUM((IF(#{incMm} >= '03', b.MON_03_AMT,0))) as MON_03_AMT
+			,SUM((IF(#{incMm} >= '04', b.MON_04_AMT,0))) as MON_04_AMT
+			,SUM((IF(#{incMm} >= '05', b.MON_05_AMT,0))) as MON_05_AMT
+			,SUM((IF(#{incMm} >= '06', b.MON_06_AMT,0))) as MON_06_AMT
+			,SUM((IF(#{incMm} >= '07', b.MON_07_AMT,0))) as MON_07_AMT
+			,SUM((IF(#{incMm} >= '08', b.MON_08_AMT,0))) as MON_08_AMT
+			,SUM((IF(#{incMm} >= '09', b.MON_09_AMT,0))) as MON_09_AMT
+			,SUM((IF(#{incMm} >= '10', b.MON_10_AMT,0))) as MON_10_AMT
+			,SUM((IF(#{incMm} >= '11', b.MON_11_AMT,0))) as MON_11_AMT
+			,SUM((IF(#{incMm} >= '12', b.MON_12_AMT,0))) as MON_12_AMT
+			FROM tb_inc_itm_info a
+			LEFT JOIN tb_bo_inc_agg b
+				ON b.BO_ID = #{boId}
+				AND b.INC_YY = cast(#{incYy} as UNSIGNED)
+				AND b.PLN_RET_CL ='R'
+				AND b.DEF_CL = (
+					SELECT MAX(c.DEF_CL)
+					from tb_bo_inc_agg c
+					WHERE c.BO_ID = #{boId}
+					AND c.INC_YY = b.INC_YY
+					AND c.PLN_RET_CL ='R'
+				)
+				AND b.INC_ITM_ID = a.INC_ITM_ID	
+			WHERE a.INC_ITM1 IN ( #{incItm1}, #{incItm12})
+			AND  a.INC_ITM2 =  IF(#{incItm2} = '--', a.INC_ITM2, #{incItm2})
+			AND a.LV_CL = 2
+			GROUP BY b.INC_YY, a.INC_ITM1
+		) C
+		, (select @va1 := 0, @va2 := 0, @va3 := 0, @va4 := 0, @va5 := 0, @va6 := 0
+		        , @va7 := 0, @va8 := 0, @va9 := 0, @va10 := 0, @va11 := 0, @va12 := 0) x
+
+  	</select>
+  
+</mapper>
+
+

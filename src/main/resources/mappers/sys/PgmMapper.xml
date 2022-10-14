@@ -1,0 +1,173 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+ 	@FileName    : PgmMapper.java
+	@Date        :
+ 	@Author      :
+ 	@Description : DB Query Mapper xml
+ 	@History     :
+ -->
+<!DOCTYPE mapper
+    PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+    "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="com.lgl.gms.webapi.sys.persistence.dao.PgmDao">
+
+  	<!-- 프로그램 리스트 조회(n건)  -->
+	<select id="selectPgmList" parameterType="java.util.HashMap"
+			resultType="com.lgl.gms.webapi.sys.dto.response.PgmResponse" >
+		select a.top_menu_cd
+		     , b.menu_nm as top_menu_nm
+		     , b.menu_nm_eng as top_menu_nm_eng
+		     , a.pgm_id
+		     , a.pgm_nm, a.pgm_snm
+		     , a.pgm_nm_eng, a.pgm_snm_eng
+		     , a.pgm_typ
+		     , a.link_file
+		     , a.rmrk
+		     , a.comp_id
+		     , a.del_yn
+		     , a.reg_dt, a.upd_dt, a.reg_no, a.upd_no
+		     , a.work_ip
+		  from tb_pgm a
+		     , (select pgm_id as menu_cd
+		             , pgm_nm as menu_nm
+		             , pgm_nm_eng as menu_nm_eng
+		             , view_seq
+		             , pgm_snm as menu_snm
+		             , pgm_snm_eng as menu_snm_eng
+		          from tb_pgm
+		         where pgm_typ = 'MENU'  /* 메뉴 그룹 */
+		       ) b   
+		 where a.top_menu_cd = b.menu_cd
+		   <if test="pgmTyp != null">and pgm_typ = #{pgmTyp}</if>
+		   <if test="topMenuCd != null">and top_menu_cd like concat('%', #{topMenuCd}, '%')</if>
+		   <if test="pgmId != null">and pgm_id like concat('%', #{pgmId}, '%')</if>
+		   <if test="pgmNm != null">and pgm_nm like concat('%', #{pgmNm}, '%')</if>
+		   <if test="compId != null">and comp_id = #{compId}</if>
+    	   <if test="delYn != null">and del_yn = #{delYn}</if>
+   	    order by b.view_seq, a.view_seq
+   	    
+  	</select>
+  	
+  	  	<!-- 메뉴 리스트 조회(n건)  -->
+	<select id="selectMenuList" parameterType="java.util.HashMap"
+			resultType="com.lgl.gms.webapi.sys.dto.response.PgmResponse" >
+		select top_menu_cd
+		     , '' as top_menu_nm
+		     , '' as top_menu_nm_eng
+		     , pgm_id
+		     , pgm_nm, pgm_snm, pgm_nm_eng, pgm_snm_eng
+		     , pgm_typ
+		     , link_file
+		     , rmrk
+		     , comp_id
+		     , view_seq
+		     , del_yn
+		     , reg_dt, upd_dt, reg_no, upd_no
+		     , work_ip
+		  from tb_pgm
+		 where 1 = 1
+		   <if test="pgmTyp != null">and pgm_typ = #{pgmTyp}</if>
+		   <if test="compId != null">and comp_id = #{compId}</if>
+    	   <if test="delYn != null">and del_yn = #{delYn}</if>
+		   <if test="pgmId != null">and pgm_id = #{pgmId}</if>
+   	     order by view_seq
+   	     
+  	</select>
+  	
+   	<!-- 프로그램 조회(1건), 기존재 여부 체크 용도로도 사용(delYn 포함), 
+   	     pgmID는 PK이므로 프로그램과 메뉴 모두 사용 가능 
+   	     추가, 수정, 삭제도 모두 동일하게 처리 가능  -->
+	<select id="selectPgmOne" parameterType="java.util.HashMap"
+			resultType="com.lgl.gms.webapi.sys.dto.response.PgmResponse" >
+		select pgm_id
+		     , pgm_nm, pgm_snm
+		     , pgm_nm_eng, pgm_snm_eng
+		     , top_menu_cd
+		     , pgm_typ
+		     , link_file
+		     , rmrk
+		     , comp_id
+		     , del_yn
+		     , reg_dt, upd_dt, reg_no, upd_no
+		     , work_ip
+		  from tb_pgm
+		 where 1 = 1
+		<if test="pgmId != null">and pgm_id = #{pgmId}</if>
+	
+  	</select>
+  	
+   	<!-- 프로그램 추가  -->
+   	<insert id="insertPgm" parameterType="com.lgl.gms.webapi.sys.persistence.model.PgmModel">
+		insert into tb_pgm 
+		    ( pgm_id
+		    , pgm_nm, pgm_snm
+		    , pgm_nm_eng, pgm_snm_eng
+		    , top_menu_cd
+		    , pgm_typ
+		    , link_file
+		    , rmrk
+		    , comp_id
+		    , reg_no
+		    , reg_dt
+		    , work_ip
+		    )
+		values
+		    ( #{pgmId}
+		    , #{pgmNm}, #{pgmSnm}
+		    , #{pgmNmEng}, #{pgmSnmEng}
+		    , #{topMenuCd}
+		    , #{pgmTyp}
+		    , #{linkFile}
+		    , #{rmrk}
+		    , #{compId}
+		    , #{regNo}
+		    , now()
+		    , #{workIp}
+		    )
+
+  	</insert>
+
+  	<!-- 프로그램 수정  -->
+  	<update id="updatePgm" parameterType="com.lgl.gms.webapi.sys.persistence.model.PgmModel">
+		update tb_pgm 
+		  <set> upd_dt = now()
+		   <if test="updNo      != null"> , upd_no      = #{updNo}      </if>
+		   <if test="pgmNm      != null"> , pgm_nm      = #{pgmNm}      </if>
+		   <if test="pgmSnm     != null"> , pgm_snm     = #{pgmSnm}     </if>
+		   <if test="pgmNmEng  != null"> , pgm_nm_eng  = #{pgmNmEng}  </if>
+		   <if test="pgmSnmEng != null"> , pgm_snm_eng = #{pgmSnmEng} </if>
+		   <if test="topMenuCd != null"> , top_menu_cd = #{topMenuCd} </if>
+		   <if test="pgmTyp     != null"> , pgm_typ     = #{pgmTyp}     </if>
+		   <if test="linkFile   != null"> , link_file   = #{linkFile}   </if>
+		   <if test="rmrk        != null"> , rmrk        = #{rmrk}        </if>
+		   <if test="delYn      != null"> , del_yn      = #{delYn}      </if>   
+		   <if test="workIp     != null"> , work_ip     = #{workIp}     </if>
+		 </set>
+		where pgm_id = #{pgmId}
+
+  	</update>
+
+  	<!-- 프로그램 삭제(flag처리)  -->
+  	<update id="deletePgm"  parameterType="java.util.HashMap">
+		update tb_pgm 
+		   <set> del_yn = 'Y'
+		       , upd_dt = now()
+		     <if test="updNo  != null"> , upd_no  = #{updNo}  </if>
+		     <if test="workIp != null"> , work_ip = #{workIp} </if>
+		   </set>
+		 where pgm_id = #{pgmId}
+
+  	</update>
+
+  	<!-- 프로그램 삭제(실제 삭제)  -->
+  	<delete id="deletePgmReal"  parameterType="java.util.HashMap">
+		delete from tb_pgm 
+		 where pgm_id = #{pgmId}
+  	</delete>
+
+
+  	
+</mapper>
+
+

@@ -1,0 +1,160 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+ 	@FileName    : BseBranchOfficeMapper.xml
+	@Date        : 22.03.22
+ 	@Author      : hj.Chung
+ 	@Description : DB Query Mapper xml
+ 	@History     :
+ -->
+<!DOCTYPE mapper
+    PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+    "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+    
+<mapper namespace="com.lgl.gms.webapi.bse.persistence.dao.BseBranchOfficeMgmtDao">
+	
+	<!-- 법인관리 리스트 조회 -->
+	<select id="selectBranchOfficeMgmtList" resultType="com.lgl.gms.webapi.bse.dto.response.BseBranchOfficeMgmtResponse" parameterType="com.lgl.gms.webapi.bse.dto.request.BseBranchOfficeMgmtRequest"> 
+		select a.bo_id
+			 , a.comp_id
+			 , a.bo_cd, a.bo_cl
+			 , if(a.bo_cl = 'H'
+		     		, if(#{locale} = 'ko', a.bo_nm, a.bo_nm_eng)
+		     		, (select if(#{locale} = 'ko', t.bo_nm, t.bo_nm_eng)  
+		     		   from tb_bo t 
+		     		   where a.pbo_id = t.bo_id)) bo_nm_h		
+		     , if(a.bo_cl = 'B', if(#{locale} = 'ko', a.bo_nm, a.bo_nm_eng), '') sub_bo_nm
+			 , a.bo_nm, a.bo_snm
+			 , a.bo_nm_eng, a.bo_snm_eng
+			 , a.cntry_cd, a.crncy_cd
+			 , a.std, a.etd
+			 , a.pbo_id
+			 , a.trrt_id
+			 , a.use_yn
+			 , a.reg_dt, a.upd_dt
+			 , a.work_ip, a.reg_no, a.upd_no 
+		from tb_bo a
+		where a.comp_id = #{compId}
+			<if test="boId != null and boId != ''">
+				<if test="subBoId != null and subBoId != ''">and a.bo_id = #{subBoId}</if>
+				<if test="subBoId == null or subBoId == ''">and (a.bo_id = #{boId} or a.pbo_id = #{boId}) </if>
+			</if>
+			<if test="useYn != null and useYn != ''">and a.use_yn = #{useYn}</if>
+		order by ifnull(a.pbo_id, a.bo_id), a.bo_id
+	</select> 
+	
+	<select id="selectBranchOfficeByBoId" resultType="com.lgl.gms.webapi.bse.dto.response.BseBranchOfficeMgmtResponse" parameterType="com.lgl.gms.webapi.bse.dto.request.BseBranchOfficeMgmtRequest"> 
+		select a.bo_id
+			 , a.comp_id
+			 , a.bo_cd, a.bo_cl
+			 , if(a.bo_cl = 'H'
+		     		, if(#{locale} = 'ko', a.bo_nm, a.bo_nm_eng)
+		     		, (select if(#{locale} = 'ko', t.bo_nm, t.bo_nm_eng)  
+		     		   from tb_bo t 
+		     		   where a.pbo_id = t.bo_id)) bo_nm_h		
+		     , if(a.bo_cl = 'B', if(#{locale} = 'ko', a.bo_nm, a.bo_nm_eng), '') sub_bo_nm
+			 , a.bo_nm, a.bo_snm
+			 , a.bo_nm_eng, a.bo_snm_eng
+			 , a.cntry_cd, a.crncy_cd
+			 , a.std, a.etd
+			 , a.pbo_id
+			 , a.trrt_id
+			 , a.use_yn
+			 , a.reg_dt, a.upd_dt
+			 , a.work_ip, a.reg_no, a.upd_no 
+		from tb_bo a
+		where a.comp_id = #{compId}
+		  and a.bo_id = #{boId}
+	</select> 
+	
+	<!-- 법인관리 row 추가 -->
+	<insert id="insertBranchOfficeMgmt" parameterType="com.lgl.gms.webapi.bse.persistence.model.BseBoModel">
+		insert into tb_bo
+				(
+				  comp_id
+				, bo_cd, bo_cl
+				, bo_nm, bo_snm
+				, bo_nm_eng, bo_snm_eng
+				, cntry_cd
+				, crncy_cd
+				, std, etd
+				, pbo_id
+				, trrt_id
+				, use_yn
+				, work_ip, reg_no, reg_dt
+				)
+		values (
+				  #{compId}
+				, #{boCd}, #{boCl}
+				, #{boNm}, #{boSnm}
+				, #{boNmEng}, #{boSnmEng}
+				, #{cntryCd}
+				, #{crncyCd}
+				, #{std}, #{etd}
+				, #{pboId}
+				, #{trrtId}
+				, #{useYn}
+				, #{workIp}, #{regNo}, #{regDt}
+				)
+	</insert>
+	
+	
+	
+	<!-- 법인관리 사용여부 변경 -->
+	<update id="deleteBranchOfficeMgmt" parameterType="java.util.HashMap">
+	 	update tb_bo 
+	 	set use_yn = 'N'
+	 	  , upd_dt = now()
+	 	  , upd_no = #{updNo}
+	 	  , work_ip = #{workIp} 
+	 	where 1 = 1
+	 		<if test="subBoId != null and subBoId != ''">and bo_id = #{subBoId}</if>
+			<if test="subBoId == null or subBoId == ''">and bo_id = #{boId}</if>
+	</update>
+
+	
+	<!-- 법인관리 row 수정 -->
+	<update id="updateBranchOfficeMgmt" parameterType="com.lgl.gms.webapi.bse.persistence.model.BseBoModel">
+		update tb_bo
+		<set>
+			upd_dt = now()
+		  , upd_no = #{updNo}
+		  , work_ip = #{workIp}
+		  , bo_snm = #{boSnm}
+		  , bo_nm_eng = #{boNmEng}
+		  , bo_snm_eng = #{boSnmEng}
+		  , std = #{std}
+		  , etd = #{etd}
+		  , use_yn = #{useYn}
+		  , pbo_id = #{pboId}
+		  , bo_cd = #{boCd}
+			<if test="boId != null and boId != ''">, bo_id = #{boId}</if>
+			<if test="subBoId != null and subBoId != ''">, bo_id = #{subBoId}</if>
+			<if test="compId != null and compId != ''">, comp_id = #{compId}</if>
+			<if test="boCl != null and boCl != ''">, bo_cl = #{boCl}</if>
+			<if test="boNm != null and boNm != ''">, bo_nm = #{boNm}</if>
+			<if test="cntryCd != null and cntryCd != ''">, cntry_cd = #{cntryCd}</if>
+			<if test="crncyCd != null and crncyCd != ''">, crncy_cd = #{crncyCd}</if>
+			<if test="trrtId != null and trrtId != ''">, trrt_id = #{trrtId}</if> 
+		</set>
+		where bo_id = #{boId}
+	</update>
+	
+	<!-- 법인 코드 중복 체크 -->
+	<select id="selectBranchOfficeByBoCd" resultType="com.lgl.gms.webapi.bse.persistence.model.BseBoModel" parameterType="java.lang.String"> 
+		select *
+		from tb_bo
+		where use_yn != 'N'
+			<if test="boCd != null"> and bo_cd = #{boCd}</if>
+			<if test="boId != null and boId != ''"> and bo_id <![CDATA[<>]]> #{boId}</if>
+	</select>
+	
+	<!-- 지사 존재 여부 -->
+	<select id="countPboId" resultType="Integer" parameterType="java.util.HashMap">
+		select count(1)
+		from tb_bo 
+		where pbo_id = #{boId}
+		  and bo_cl = 'B'
+		  and use_yn = 'Y'
+	</select>
+	
+</mapper>

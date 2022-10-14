@@ -1,0 +1,368 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+ 	@FileName    : InfEmployeeMapper.xml
+	@Date        : 22.03.14
+ 	@Author      : hj.Chung
+ 	@Description : DB Query Mapper xml
+ 	@History     :
+ -->
+<!DOCTYPE mapper
+    PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+    "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+    
+<mapper namespace="com.lgl.gms.webapi.inf.persistence.dao.InfEmployeeMgmtDao">
+
+	<!-- 법인인원현황관리 리스트 조회 (직원현황) -->
+	<select id="selectInfraEmployeeMgmtList" resultType="com.lgl.gms.webapi.inf.dto.response.InfEmployeeMgmtResponse" 
+			parameterType="com.lgl.gms.webapi.inf.dto.request.InfEmployeeMgmtRequest"> 
+		select a.bo_emp_id
+		     , if(b.bo_cl = 'H', a.bo_id, b.pbo_id) bo_id
+		     , if(b.bo_cl = 'B', a.bo_id, 0) sub_bo_id
+		     , if(b.bo_cl = 'H'
+		     	  , if(#{locale} = 'ko', b.bo_nm, b.bo_nm_eng)
+		     	  , (select if(#{locale} = 'ko', t.bo_nm, t.bo_nm_eng) 
+		     	   from tb_bo t 
+		     	   where b.pbo_id = t.bo_id)) bo_nm_h		
+		     , if(b.bo_cl = 'B', if(#{locale} = 'ko', b.bo_nm, b.bo_nm_eng), '') sub_bo_nm
+		     , b.bo_nm
+			 , a.emp_typ_id
+			 , f_get_commcd_nm(a.emp_typ_id, #{locale}) emp_typ_nm
+			 , a.emp_nm
+			 , a.dpt
+			 , a.pst
+			 , a.cty
+			 , a.sex
+			 , fn_edit_timestampdiff('MONTH', a.doe, #{baseDateStart}) as period
+			 , a.doe 
+			 , a.rgd
+			 , a.job
+			 , a.ho_pst
+			 , a.del_yn
+			 , a.reg_dt
+			 , a.upd_dt
+			 , a.work_ip
+			 , a.reg_no
+			 , a.upd_no
+			 , a.ass_dt
+			 , a.rtn_dt
+			 , a.acc_fmly_wife
+			 , a.acc_fmly_child
+			 , a.hsng_cont_std
+			 , a.hsng_cont_etd
+			 , a.crncy_cd
+			 , a.hre
+			 , a.hsng_cont_doc_yn
+			 , b.bo_cl
+		from tb_infra_bo_emp a
+	    join tb_bo b on (a.bo_id = b.bo_id)
+		where b.comp_id = #{compId}
+		  and del_yn!='Y'
+		  <if test="empTypId!=null and empTypId!=''">and a.emp_typ_id = #{empTypId}</if>
+		  <if test="boId != null and boId != ''">
+			  <if test="subBoId != null and subBoId != ''">and a.bo_id = #{subBoId}</if>
+			  <if test="subBoId == null or subBoId == ''">and (a.bo_id = #{boId} or a.bo_id in (select bo_id from tb_bo b 
+			  																				where b.pbo_id = #{boId}))
+			  </if>
+		  </if>
+	      <if test="searchOpt != null or searchOpt != ''">
+	      	<if test="searchOpt == '1'.toString()">
+		      	and a.doe between #{baseDateStart} and #{baseDateEnd}
+	      	</if>
+	      	<if test="searchOpt == '2'.toString()">
+		      	and a.rgd between #{baseDateStart} and #{baseDateEnd}
+	      	</if>
+	      	<if test="searchOpt == '3'.toString()">
+	      		and not (case 
+	      					when ifnull(a.rgd, '') = '' then '29991231'
+	      					else a.rgd
+	      				 end
+	      				 <![CDATA[<=]]> #{baseDateEnd}
+	      				)
+	      	</if>
+	      </if>
+		order by ifnull(b.pbo_id, b.bo_id), b.bo_id, a.bo_emp_id, emp_typ_nm, a.dpt
+	</select> 
+	
+	<select id="selectInfraEmployeeByEmpId" resultType="com.lgl.gms.webapi.inf.dto.response.InfEmployeeMgmtResponse" parameterType="com.lgl.gms.webapi.inf.dto.request.InfEmployeeMgmtRequest"> 
+		select a.bo_emp_id
+		     , if(b.bo_cl = 'H', a.bo_id, b.pbo_id) bo_id
+		     , if(b.bo_cl = 'B', a.bo_id, 0) sub_bo_id
+		     , if(b.bo_cl = 'H'
+		     	  , if(#{locale} = 'ko', b.bo_nm, b.bo_nm_eng)
+		     	  , (select if(#{locale} = 'ko', t.bo_nm, t.bo_nm_eng) 
+		     	   from tb_bo t 
+		     	   where b.pbo_id = t.bo_id)) bo_nm_h		
+		     , if(b.bo_cl = 'B', if(#{locale} = 'ko', b.bo_nm, b.bo_nm_eng), '') sub_bo_nm
+		     , b.bo_nm
+			 , a.emp_typ_id
+			 , f_get_commcd_nm(a.emp_typ_id, #{locale}) emp_typ_nm
+			 , a.emp_nm
+			 , a.dpt
+			 , a.pst
+			 , a.cty
+			 , a.sex
+			 , a.doe 
+			 , fn_edit_timestampdiff('MONTH', a.doe, #{baseDateStart}) as period
+			 , a.rgd
+			 , a.job
+			 , a.ho_pst
+			 , a.del_yn
+			 , a.reg_dt
+			 , a.upd_dt
+			 , a.work_ip
+			 , a.reg_no
+			 , a.upd_no
+			 , a.ass_dt
+			 , a.rtn_dt
+			 , a.acc_fmly_wife
+			 , a.acc_fmly_child
+			 , a.hsng_cont_std
+			 , a.hsng_cont_etd
+			 , a.crncy_cd
+			 , a.hre
+			 , a.hsng_cont_doc_yn
+			 , b.bo_cl
+		from tb_infra_bo_emp a
+	    join tb_bo b on (a.bo_id = b.bo_id)
+		where b.comp_id = #{compId}
+		  and a.bo_emp_id = #{boEmpId}
+		  and del_yn!='Y'
+		  <if test="boId != null and boId != ''">
+			  <if test="subBoId != null and subBoId != ''">and a.bo_id = #{subBoId}</if>
+			  <if test="subBoId == null or subBoId == ''">and (a.bo_id = #{boId} or a.bo_id in (select bo_id from tb_bo b 
+			  																				where b.pbo_id = #{boId}))
+			  </if>
+		</if>
+		order by ifnull(b.pbo_id, b.bo_id), b.bo_id, a.bo_emp_id, emp_typ_nm, a.dpt
+	</select> 
+	
+	<!-- 법인인원현황관리 row 추가 (직원현황 | 주재원) -->
+	<insert id="insertEmployeeMgmt" parameterType="com.lgl.gms.webapi.inf.persistence.model.InfraBoEmpModel">
+		insert into tb_infra_bo_emp
+				(
+				  bo_id
+				, emp_typ_id, emp_nm
+				, sex
+				, dpt, pst
+				, ho_pst
+				, cty
+				, job
+				, doe, rgd
+				, ass_dt, rtn_dt
+				, acc_fmly_wife, acc_fmly_child
+				, hsng_cont_std, hsng_cont_etd
+				, hsng_cont_doc_yn
+				, hre
+				, crncy_cd
+				, work_ip, reg_no, reg_dt
+				, del_yn
+				)
+		values (
+		  		#{boId}
+		  		, #{empTypId}, #{empNm}
+		  		, #{sex}
+		  		, #{dpt}, #{pst}
+		  		, #{hoPst}
+		  		, #{cty}
+		  		, #{job}
+		  		, #{doe}, #{rgd}
+		  		, #{assDt}, #{rtnDt}
+		  		, #{accFmlyWife}, #{accFmlyChild}
+		  		, #{hsngContStd}, #{hsngContEtd}
+		  		, #{hsngContDocYn}
+		  		, #{hre}
+		  		, #{crncyCd}
+		  		, #{workIp}, #{regNo}, #{regDt}
+		  		, 'N'
+		  		)
+	</insert>
+	
+	<!-- 법인시설현황관리 row 삭제 (직원현황 | 주재원) -->
+	<update id="deleteEmployeeMgmt" parameterType="java.util.HashMap">
+	 	update tb_infra_bo_emp
+	 	set del_yn = 'Y'
+	 	  , upd_dt = now()
+		  , upd_no = #{updNo}
+	 	  , work_ip = #{workIp}
+	 	where bo_emp_id = #{boEmpId}
+	</update>
+	
+	<!-- 법인인원현황관리 row 수정 (직원현황 | 주재원) -->
+	<update id="updateEmployeeMgmt" parameterType="com.lgl.gms.webapi.inf.persistence.model.InfraBoEmpModel">
+		update tb_infra_bo_emp
+		<set>
+			upd_dt = now()
+			, upd_no = #{updNo}
+			, work_ip = #{workIp}
+			, ho_pst = #{hoPst}
+			, job = #{job}
+			, rgd = #{rgd}
+			, ass_dt = #{assDt}
+			, rtn_dt = #{rtnDt}
+			, acc_fmly_wife = #{accFmlyWife}
+			, acc_fmly_child = #{accFmlyChild}
+			, hsng_cont_std = #{hsngContStd}
+			, hsng_cont_etd = #{hsngContEtd}
+			, hsng_cont_doc_yn = #{hsngContDocYn}
+			, hre = #{hre}
+			, crncy_cd = #{crncyCd}
+			<if test="boId != null and boId != ''">, bo_id = #{boId}</if>
+			<if test="subBoId != null and subBoId != ''">, bo_id = #{subBoId}</if>
+			<if test="empTypId != null and empTypId !=''">, emp_typ_id = #{empTypId}</if>
+			<if test="empNm != null and empNm!=''">, emp_nm = #{empNm}</if>
+			<if test="sex != null and sex!=''">, sex = #{sex}</if>
+			<if test="dpt != null and dpt!=''">, dpt = #{dpt}</if>
+			<if test="pst != null and pst!=''">, pst = #{pst}</if>
+			<if test="cty != null and cty!=''">, cty = #{cty}</if>
+			<if test="doe != null and doe!=''">, doe = #{doe}</if>
+		</set>
+		where bo_emp_id = #{boEmpId}
+	</update>
+	
+	<!-- 법인인원현황관리 리스트 조회 (주재원) -->
+	<select id="selectRegidentMgmtList" resultType="com.lgl.gms.webapi.inf.dto.response.InfEmployeeMgmtResponse" 
+										parameterType="com.lgl.gms.webapi.inf.dto.request.InfEmployeeMgmtRequest"> 
+	
+		select a.bo_emp_id
+		     , if(b.bo_cl = 'H', a.bo_id, b.pbo_id) bo_id
+		     , if(b.bo_cl = 'B', a.bo_id, 0) sub_bo_id
+		     , if(b.bo_cl = 'H'
+		     	  , if(#{locale} = 'ko', b.bo_nm, b.bo_nm_eng)
+		     	  , (select if(#{locale} = 'ko', t.bo_nm, t.bo_nm_eng) 
+		     	   from tb_bo t 
+		     	   where b.pbo_id = t.bo_id)) bo_nm_h		
+		     , if(b.bo_cl = 'B', if(#{locale} = 'ko', b.bo_nm, b.bo_nm_eng), '') sub_bo_nm
+		     , b.bo_nm
+			 , a.emp_typ_id
+			 , f_get_commcd_nm(a.emp_typ_id, #{locale}) emp_typ_nm
+			 , a.emp_nm
+			 , a.dpt
+			 , a.pst
+			 , a.cty
+			 , a.sex
+			 , a.doe 
+			 , a.rgd
+			 , a.job
+			 , a.ho_pst
+			 , a.del_yn
+			 , a.reg_dt
+			 , a.upd_dt
+			 , a.work_ip
+			 , a.reg_no
+			 , a.upd_no
+			 , a.ass_dt
+			 , a.rtn_dt
+			 , a.acc_fmly_wife
+			 , a.acc_fmly_child
+			 , a.hsng_cont_std
+			 , a.hsng_cont_etd
+			 , a.crncy_cd
+			 , a.hre
+			 , a.hsng_cont_doc_yn
+			 , b.bo_cl
+		     , fn_edit_timestampdiff('MONTH', #{startDate}, a.rtn_dt) as remain_dt
+		     , b.pbo_id
+		from tb_infra_bo_emp a
+	    join tb_bo b on (a.bo_id = b.bo_id)
+		where b.comp_id = #{compId}
+		  and emp_typ_id = #{empTypId}
+		  and del_yn!='Y'
+		  <if test="boId != null and boId != ''">
+			  <if test="subBoId != null and subBoId != ''">and a.bo_id = #{subBoId}</if>
+			  <if test="subBoId == null or subBoId == ''">and (a.bo_id = #{boId} or a.bo_id in (select bo_id from tb_bo b 
+			  																				where b.pbo_id = #{boId}))
+			  </if>
+		  </if>
+	      <if test="startDate != null and startDate != ''">
+	      	and (
+			      	(ass_dt between #{startDate} and #{endDate})
+			      	or (rtn_dt between #{startDate} and #{endDate})
+			      	or (ass_dt <![CDATA[<=]]> #{endDate})
+			      	or (rtn_dt <![CDATA[>=]]> #{startDate} and ass_dt <![CDATA[<=]]> #{endDate})
+			     )
+	      </if>
+		order by ifnull(b.pbo_id, b.bo_id), b.bo_id, a.pst, a.ho_pst, a.emp_nm
+	
+	</select> 
+	
+	<!-- 법인 및 지사로 boId 찾기 -->
+	<select id="selectBoIdByBoKey" resultType="java.lang.Integer"> 
+		select distinct(b.bo_id)
+		from tb_infra_bo_emp a
+		left join tb_bo b 
+		on a.bo_id = b.bo_id
+		where b.bo_nm = #{boKey}
+	</select> 
+	
+	<!-- 직원 유형으로 empTypId 찾기 -->
+	<select id="selectEmpTypIdByEmpTypKey" resultType="java.lang.Integer"> 
+		select distinct(tccv_id)
+		from tb_tcc_val
+		where std_cd_nm = #{empTypKey}
+	</select>
+	
+	<!-- 법인인원현황관리 엑셀 업로드 저장 (직원현황) -->
+	<insert id="insertExcelEmployeeMgmt" parameterType="java.util.Map">
+		insert ignore into tb_infra_bo_emp
+				( 
+				  bo_id
+				, emp_typ_id, emp_nm
+				, sex
+				, dpt, pst
+				, ho_pst
+				, cty
+				, job
+				, doe, rgd
+				, ass_dt, rtn_dt
+				, acc_fmly_wife, acc_fmly_child
+				, hsng_cont_std, hsng_cont_etd
+				, hsng_cont_doc_yn
+				, hre
+				, crncy_cd
+				, work_ip, reg_no, reg_dt
+				, del_yn
+				)
+		values 
+			(
+		  		 #{boId}
+		  		, #{empTypId}, #{empNm}
+		  		, #{sex}
+		  		, #{dpt}, #{pst}
+		  		, #{hoPst}
+		  		, #{cty}
+		  		, #{job}
+		  		, #{doe}, #{rgd}
+		  		, #{assDt}, #{rtnDt}
+		  		, #{accFmlyWife}, #{accFmlyChild}
+		  		, #{hsngContStd}, #{hsngContEtd}
+		  		, #{hsngContDocYn}
+		  		, #{hre}
+		  		, #{crncyCd}
+		  		, #{workIp}, #{regNo}, #{regDt}
+		  		, 'N'
+		  		)
+		 on duplicate key update 
+			  bo_id = values(bo_id)
+			, emp_typ_id = values(emp_typ_id), emp_nm = values(emp_nm)
+			, sex = values(sex)
+			, dpt = values(dpt), pst = values(pst)
+			, ho_pst = values(ho_pst)
+			, cty = values(cty)
+			, job = values(job)
+			, doe = values(doe), rgd = values(rgd)
+			, ass_dt = values(ass_dt), rtn_dt = values(rtn_dt)
+			, acc_fmly_wife = values(acc_fmly_wife)
+			, acc_fmly_child = values(acc_fmly_child)
+			, hsng_cont_std = values(hsng_cont_std)
+			, hsng_cont_etd = values(hsng_cont_etd)
+			, hsng_cont_doc_yn = values(hsng_cont_doc_yn)
+			, hre = values(hre)
+			, crncy_cd = values(crncy_cd)
+			, work_ip = values(work_ip)
+			, reg_no = values(reg_no)
+			, reg_dt = values(reg_dt)
+			, del_yn = values(del_yn)
+	</insert> 
+	
+	
+</mapper>

@@ -1,0 +1,65 @@
+response:
+  C200: "Success"
+  C301: "An error occurred while executing the detailed data creation procedure."
+  C302: "An error occurred while executing profit and loss aggregation procedure"
+  C303: "An error occurred while running the closing procedure."
+  C401: "Authentication token has expired."
+  C402: "You do not have access to this resource.\n Access is possible after authentication."
+  C589: "An internal error has occurred."
+  
+  C601: "Failed to save excel. please try again."
+  
+  C701: "The user ID you entered does not exist."
+  C703: "Invalid Password.\n Account will lock for 30 minutes after 5 failed attempts to log in"
+  C705: "You are logged out."
+  C709: "Your account will be temporarily locked for 30 minutes "
+  C711: "Could not find the password change history for the user."
+    
+  C731: "Required Fields Not Validated"
+  C732: "Input is invalid"
+  C733: "Item already exists"
+  C735: "Can't delete C-Corp because S-Corp exists"
+  C737: "Can't delete key because sub-item exists"
+  
+  C781: "Invalid User ID and Password"
+  C783: "New password must not be different from old"
+  C784: "Current password is invalid"
+  C785: "3 times of last used password cannot be reused"
+    
+  C805: "Duplicate ID."
+  C807: "Duplicate corporate code."
+  
+  C999: "An error occurred during processing." 
+  
+message:
+  chkcust: "please check cust"
+  chksvc: "please check service type"
+  chkgrp1: "please check group 1"
+  chkgrp2: "please check group 2"
+  chkgrp3: "please check group 3"
+  chkItm: "please check type or cl"
+  chkRvnAmt: "please check rvnAmt"
+  chkExpAmt: "please check expAmt"
+  misLbrCost: "lbr cost is not match : "
+  misExpCost: "exp cost is not match :"
+  chkBoNm: "please check C-Corp name"
+  
+xls:
+  header: 
+    itmNm: "Type"
+    mon: "{0}Mon"
+    sum: "Year/cumulative"
+    
+field:
+  incMon: "Mon"
+  grp1Cd: "Group 1"
+  grp2Cd: "Group 2"
+  svcTyp: "Service Name"
+  salAmt : "Revenue"
+  salCst: "COGS"
+  lbrCost: "Laber Cost"
+  expAmt: "Expenses"
+  typCd: "Type"
+  cl1Cd: "Class 1"
+  cl2Cd: "Class 2"
+  rvnAmt: "Revenue"

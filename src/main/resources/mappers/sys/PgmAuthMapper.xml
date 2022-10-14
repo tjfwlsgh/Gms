@@ -1,0 +1,229 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+ 	@FileName    : PgmAuthMapper.java
+	@Date        :
+ 	@Author      :
+ 	@Description : DB Query Mapper xml
+ 	@History     :
+ -->
+<!DOCTYPE mapper
+    PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+    "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="com.lgl.gms.webapi.sys.persistence.dao.PgmAuthDao">
+
+  	<!-- 권한 리스트 조회(n건)  -->
+	<select id="selectAuthList" parameterType="java.util.HashMap"
+				resultType="com.lgl.gms.webapi.sys.dto.response.AuthResponse" >
+			select auth_cd
+		     , auth_nm
+		     , auth_nm_eng
+		     , del_yn
+		     , reg_no
+		     , upd_no
+		     , reg_dt
+		     , upd_dt
+		     , work_ip
+		  from tb_auth_mgmt
+		 where 1 = 1
+		   <if test="authCd != null">and auth_cd like concat('%', #{authCd}, '%')</if>
+    	   <if test="delYn != null">and del_yn = #{delYn}</if>
+   	    order by auth_cd
+   	    
+  	</select>
+  
+  	<!-- 권한 조회(1건)  -->
+	<select id="selectAuthOne" parameterType="java.util.HashMap"
+				resultType="com.lgl.gms.webapi.sys.dto.response.AuthResponse" >
+			select auth_cd
+		     , auth_nm
+		     , auth_nm_eng
+		     , del_yn
+		     , reg_no
+		     , upd_no
+		     , reg_dt
+		     , upd_dt
+		     , work_ip
+		  from tb_auth_mgmt
+		 where auth_cd = #{authCd}
+		   <if test="delYn != null">and del_yn = #{delYn}</if>
+   	    order by auth_cd
+   	    
+  	</select>
+  	
+   	<!-- 권한 추가  -->
+   	<insert id="insertAuth" parameterType="com.lgl.gms.webapi.sys.persistence.model.AuthModel">
+		insert into tb_auth_mgmt 
+		   ( auth_cd
+		   , auth_nm
+		   , auth_nm_eng
+		   , reg_no
+		   , reg_dt
+		   , work_ip
+		   )
+		values 
+		  (  #{authCd}
+		   , #{authNm}
+		   , #{authNmEng}
+		   , #{regNo}
+		   , now()
+		   , #{workIp}
+		  )
+  	</insert>
+
+  	<!-- 프로그램 수정  -->
+  	<update id="updateAuth" parameterType="com.lgl.gms.webapi.sys.persistence.model.AuthModel">
+		update tb_auth_mgmt
+		   <set> upd_dt = now()
+		      <if test="updNo     != null"> , upd_no      = #{updNo}    </if>
+		      <if test="authNm    != null"> , auth_nm     = #{authNm}   </if>
+		      <if test="authNmEng != null"> , auth_nm_eng = #{authNmEng}</if>
+			  <if test="delYn     != null"> , del_yn      = #{delYn}    </if>
+		      <if test="workIp     != null"> , work_ip     = #{workIp} 	 </if>	   
+		   </set> 
+		where auth_cd = #{authCd}
+
+  	</update>
+
+  	<!-- 프로그램 삭제(flag처리)  -->
+  	<update id="deleteAuth"  parameterType="java.util.HashMap">
+		update tb_auth_mgmt
+		   <set> del_yn = 'Y'
+		       , upd_dt = now()
+		     <if test="updNo  != null"> , upd_no  = #{updNo}  </if>
+		     <if test="workIp != null"> , work_ip = #{workIp} </if>
+		   </set> 
+		where auth_cd = #{authCd}
+
+  	</update>
+
+  	<!-- 프로그램 삭제(실제 삭제)  -->
+  	<delete id="deleteAuthReal"  parameterType="java.util.HashMap">
+		delete 
+		  from tb_auth_mgmt 
+		 where auth_cd = #{authCd}
+  	</delete>
+
+    <!-- 프로그램-권한 리스트 조회(n건)  -->
+	<select id="selectPgmAuthList" parameterType="java.util.HashMap"
+				resultType="com.lgl.gms.webapi.sys.dto.response.PgmAuthResponse" >
+		select a.auth_cd
+		     , a.top_menu_cd
+		     , c.pgm_nm as top_menu_nm
+		     , c.pgm_nm_eng as top_menu_nm_eng
+		     , c.view_seq as menu_view_seq
+		     , a.pgm_id
+			 , b.pgm_nm
+			 , b.pgm_nm_eng
+		     , a.view_seq
+		     , a.view_auth
+		     , a.add_auth
+		     , a.chg_auth
+		     , a.del_auth
+		     , a.dwl_auth
+		     , a.upl_auth
+		     , a.sve_auth
+		     , a.cls_auth
+		     , a.code_lv
+		     , a.del_yn
+		     , a.reg_dt
+		     , a.upd_dt
+		     , a.work_ip
+		     , a.reg_no
+		     , a.upd_no
+		  from tb_pgm_auth a
+			  join tb_pgm b on a.pgm_id = b.pgm_id 
+			  join tb_pgm c on a.top_menu_cd = c.pgm_id   
+		 where a.auth_cd    = #{authCd}
+		  and a.top_menu_cd = #{topMenuCd}
+		order by menu_view_seq, view_seq
+   	    
+  	</select>
+
+    <!-- 프로그램-권한 리스트 조회(n건)  -->
+	<select id="selectPgmAuthCnt" parameterType="java.util.HashMap" resultType="Integer" >
+		select count(1)
+		  from tb_pgm_auth   
+		 where auth_cd = #{authCd}
+		 <if test="topMenuCd != null">and top_menu_cd = #{topMenuCd}</if>
+   	    
+  	</select>
+  	
+  	<!-- 프로그램-권한 저장  -->
+   	<insert id="insertPgmAuth" parameterType="com.lgl.gms.webapi.sys.persistence.model.PgmAuthModel">
+		  insert into tb_pgm_auth
+				( auth_cd, pgm_id, top_menu_cd
+				, view_seq
+				, view_auth, add_auth, chg_auth, del_auth
+				, dwl_auth, upl_auth, sve_auth, cls_auth	
+				, code_lv
+				, del_yn
+				, reg_no, upd_no, reg_dt, upd_dt
+				, work_ip
+				)
+			select if(b.auth_cd is null, #{authCd}, b.auth_cd) as auth_cd
+			     , a.pgm_id
+			     , if(b.top_menu_cd is null, #{topMenuCd}, b.top_menu_cd) as top_menu_cd 
+			     , If(b.view_seq is null, a.view_seq, b.view_seq) as view_seq
+			     , If(b.view_auth is null, 'Y', b.view_auth) as view_auth
+			     , If(b.add_auth is null, 'Y', b.add_auth) as add_auth
+			     , If(b.chg_auth is null, 'Y', b.chg_auth) as chg_auth
+			     , If(b.del_auth is null, 'Y', b.del_auth) as del_auth
+			     , If(b.dwl_auth is null, 'Y', b.dwl_auth) as dwl_auth
+			     , If(b.upl_auth is null, 'N', b.upl_auth) as upl_auth
+			     , If(b.sve_auth is null, 'N', b.sve_auth) as sve_auth
+			     , If(b.cls_auth is null, 'N', b.cls_auth) as cls_auth
+			     , If(b.code_lv is null, '2', b.code_lv) as code_lv
+				 , If(b.del_yn is null, 'N', b.del_yn) as del_yn
+			     , #{regNo} reg_no, #{regNo} as upd_no
+			     , now() as reg_dt, now() as upd_dt
+			     , #{workIp} as work_ip
+			  from (select * from tb_pgm
+			         where del_yn = 'N'
+			           and top_menu_cd = #{topMenuCd}
+			       ) a 
+			   left outer join 
+			       (select * from tb_pgm_auth
+			         where del_yn = 'N'
+			           and auth_cd     = #{authCd}
+			           and top_menu_cd = #{topMenuCd}
+			       ) b
+			    on a.pgm_id = b.pgm_id
+			 where b.pgm_id is NULL
+			 order by a.view_seq
+  	</insert>
+
+  	<!-- 프로그램-권한 수정  -->
+  	<update id="updatePgmAuth" parameterType="com.lgl.gms.webapi.sys.persistence.model.PgmAuthModel">
+
+		update tb_pgm_auth
+			<set> upd_dt = now()
+			   <if test="updNo    != null"> , upd_no    = #{updNo}    </if>
+			   <if test="viewSeq  != null"> , view_seq  = #{viewSeq}  </if>
+               <if test="delYn    != null"> , del_yn    = #{delYn}    </if>
+               <if test="viewAuth != null"> , view_auth = #{viewAuth} </if>
+               <if test="addAuth  != null"> , add_auth  = #{addAuth}  </if>
+               <if test="chgAuth  != null"> , chg_auth  = #{chgAuth}  </if>
+               <if test="delAuth  != null"> , del_auth  = #{delAuth}   </if>
+               <if test="dwlAuth  != null"> , dwl_auth  = #{dwlAuth}  </if>
+               <if test="uplAuth  != null"> , upl_auth  = #{uplAuth}  </if>
+               <if test="sveAuth  != null"> , sve_auth  = #{sveAuth}  </if>
+               <if test="clsAuth  != null"> , cls_auth  = #{clsAuth}  </if>
+		       <if test="workIp   != null"> , work_ip   = #{workIp}   </if>	   
+			</set>
+		where auth_cd     = #{authCd}
+		  and top_menu_cd = #{topMenuCd}
+		  and pgm_id      = #{pgmId}
+  	</update>
+
+
+  	<!-- 프로그램-권한 삭제(실제 삭제)  -->
+  	<delete id="deletePgmAuthReal"  parameterType="java.util.HashMap">
+		delete from tb_pgm_auth 
+		 where auth_cd     = #{authCd}
+		   and top_menu_cd = #{topMenuCd}
+  	</delete>
+  	
+</mapper>
+
+

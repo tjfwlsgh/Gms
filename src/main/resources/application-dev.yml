@@ -1,0 +1,75 @@
+spring:
+  datasource:
+    hikari:
+      jdbc-url: jdbc:mysql://lglgmsdv-1.cqwiuxzo67cg.ap-northeast-2.rds.amazonaws.com:3086/lglgmsdb?characterEncoding=UTF-8&serverTimezone=UTC&useSSL=false
+      username: gmsdba
+      password: lglgms1!
+      driver-class-name: com.mysql.cj.jdbc.Driver
+      poolName: Pool-LGLGMS
+      maximum-pool-size: 10
+      max-lifetime: 1800000
+      data-source-properties:
+        cachePrepStmts: true
+        prepStmtCacheSize: 250
+        prepStmtCacheSqlLimit: 2048
+        useServerPrepStmts: true
+       
+# 2022.02.14 JPA기능 disable
+  jpa:
+    properties:
+      hibernate:
+        format-sql: false
+    open-in-view: false
+    show-sql: false
+  mvc:
+    static-path-pattern: /static/**
+    view:
+      suffix: .html
+  web:
+    resources:
+      add-mappings: true
+      static-locations: 
+        - classpath:/static/
+  servlet:
+    multipart:
+      max-file-size: 50MB # 파일사이즈 제한
+      max-request-size: 50MB # request 사이즈 제한
+  messages:
+    basename: i18n/messages # 메시지파일 위치
+    encoding: UTF-8
+mybatis:
+  config-location: classpath:mybatis-config.xml
+  configuration:
+    map-underscore-to-camel-case: true
+    default-fetch-size: 100
+    default-statement-timeout: 30
+server:
+  port: 8080
+  servlet:
+    context-path: /api
+  # ssl:
+  #   enabled: true
+  #   key-alias: 키별칭
+  #   key-store: 키스토어.jks
+  #   key-store-password: '패스워드'
+  #   key-password: '패스워드'
+  #   trust-store: 트러스트키스토어.jks
+  #   trust-store-password: '패스워드'
+  error:
+    include-exception: true      # Response 에 Exception 을 표시할지
+    include-message: always       # Response 에 Exception Message 를 표시할지 (never | always | on-param)
+    include-stacktrace: always     # Response 에 Stack Trace 를 표시할지
+    whitelabel.enabled: false      # 에러 발생 시 Spring 기본 에러 페이지 노출 여부
+  enc-key: 637474766F72702D2D78696C6674656E2D746B
+  aes-key: springboot-boilplate-key
+  jwt-key: ml0eS1qd3Qc3ByaW5nLWJvb3Qtc2VjdXJpdHktand0G9yaWFsLWppd29vbi1zcHJpbmctYm9vdC1zZWN1cLXR1dtdHV0b3JpYWwK
+  jwt-access-time: 10   # 단위(분) 
+  jwt-refresh-time: 30  # 단위(분) 
+  # session-ext-time: 60  # 세션타임설정(사용안함)
+  log-response-payload-debug: 0 # 로그 출력레벨(debug 사용/사용안함)
+  log-resquest-payload-debug: 0
+  documentPath: "d:/dev/uploads" # 파일저장경로
+async-thread:
+  core-pool-size: 50
+  max-pool-size: 50
+  queue-capacity: 10000

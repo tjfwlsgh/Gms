@@ -1,0 +1,345 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+ 	@FileName    : CodeMapper.java
+	@Date        :
+ 	@Author      :
+ 	@Description : DB Query Mapper xml
+ 	@History     :
+ -->
+<!DOCTYPE mapper
+    PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+    "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="com.lgl.gms.webapi.sys.persistence.dao.CodeDao">
+
+  	<!-- 코드유형 조회(n건)  -->
+	<select id="selectCodeTypeList" parameterType="java.util.HashMap"
+			resultType="com.lgl.gms.webapi.sys.dto.response.TccResponse" >
+		select tcc_id
+		     , comp_id
+		     , bse_cd, typ_nm, typ_nm_eng
+		     , cd_cl
+		     , user_cl
+		     , cd_lv
+		     , del_yn
+		     , upd_no, reg_no, reg_dt, upd_dt
+		from tb_tcc
+		where 1 = 1
+		<if test="bseCd != null">and bse_cd like concat('%', #{bseCd}, '%')</if>
+		<if test="typNm != null">and typ_nm like '%${typNm}%'</if>
+		<if test="userCl != null">and user_cl =  #{userCl}</if>
+   	    <if test="compId != null">and comp_id = #{compId}</if>
+   	    <if test="delYn != null">and del_yn = #{delYn}</if>
+   	    
+  	</select>
+  	
+   	<!-- 코드유형 조회(1건), 기존재 여부 체크 용도로도 사용(delYn 포함)  -->
+	<select id="selectCodeTypeOne" parameterType="com.lgl.gms.webapi.sys.dto.request.TccRequest"
+			resultType="com.lgl.gms.webapi.sys.dto.response.TccResponse" >
+		select tcc_id
+		     , comp_id
+		     , bse_cd, typ_nm, typ_nm_eng
+		     , cd_cl
+		     , user_cl
+		     , cd_lv
+		     , del_yn
+		     , upd_no, reg_no, reg_dt, upd_dt
+		from tb_tcc
+		where 1 = 1
+		<if test="bseCd != null">and bse_cd  = #{bseCd} </if>
+   	    <if test="compId != null">and comp_id = #{compId}</if>
+	
+  	</select>
+  	
+   	<!-- 코드유형 추가  -->
+   	<insert id="insertCodeType" parameterType="com.lgl.gms.webapi.sys.persistence.model.TccModel">
+		insert into tb_tcc 
+			  ( comp_id
+			  , bse_cd, typ_nm, typ_nm_eng
+			  , cd_cl, user_cl
+			  , cd_lv
+			  , reg_no
+			  , reg_dt
+			  , work_ip
+			  )
+		values 
+			  ( #{compId}
+			  , #{bseCd}, #{typNm}, #{typNmEng}
+			  , #{cdCl},  #{userCl}
+			  , #{cdLv}
+			  , #{regNo}
+			  , now()
+			  , #{workIp}
+			  )
+
+		<selectKey resultType="Integer" keyProperty="tccId" order="AFTER">
+       		SELECT LAST_INSERT_ID()
+   		</selectKey>
+  	</insert>
+
+  	<!-- 코드유형 수정  -->
+  	<update id="updateCodeType" parameterType="com.lgl.gms.webapi.sys.persistence.model.TccModel">
+  	
+	  	update tb_tcc
+	      <set> 
+	         upd_dt = now()
+		     <if test="bseCd != null">   , bse_cd = #{bseCd}       </if>
+		     <if test="typNm != null">   , typ_nm = #{typNm}       </if>
+		     <if test="typNmEng != null">, typ_nm_eng = #{typNmEng}</if>
+		     <if test="cdCl != null">    , cd_cl = #{cdCl}         </if>
+		     <if test="userCl != null">  , user_cl = #{userCl}     </if>
+		     <if test="cdLv != null">    , cd_lv = #{cdLv}         </if>
+		     <if test="delYn != null">   , del_yn = #{delYn}       </if>
+		     <if test="updNo != null">   , upd_no = #{updNo}       </if>
+		     <if test="workIp != null">  , work_ip = #{workIp}     </if>	      
+	      </set> 
+	     where tcc_id = #{tccId}
+	     
+  	</update>
+
+  	<!-- 코드유형 삭제(flag처리)  -->
+  	<update id="deleteCodeType"  parameterType="com.lgl.gms.webapi.sys.persistence.model.TccModel">
+		update tb_tcc
+	      <set> del_yn = 'Y' 
+	          , upd_dt = now()
+		     <if test="updNo != null">, upd_no = #{updNo}</if>
+		     <if test="workIp != null">, work_ip = #{workIp}</if>	      
+	      </set> 
+	     where tcc_id = #{tccId}
+  	</update>
+
+  	<!-- 코드유형 삭제(실제 삭제)  -->
+  	<delete id="deleteCodeTypeReal"  parameterType="com.lgl.gms.webapi.sys.persistence.model.TccModel">
+		delete from tb_tcc 
+		 where tcc_id = #{tccId}
+  	</delete>
+  	<!--  다중 delete문 처리 샘플
+		delete from tb_tcc_val where tcc_id = {#tccId};
+		delete from tb_svc_typ where tccv_id = {#tccvId}; -->
+		
+	<!-- ==========================================================================  -->
+  	<!-- 코드(상세)값 조회  -->
+	<select id="selectCodeValList" parameterType="java.util.HashMap"
+			resultType="com.lgl.gms.webapi.sys.dto.response.TccValResponse" >
+		select tccv_id
+		     , tcc_id
+		     , std_cd
+		     , std_cd_nm, std_cd_nm_eng
+		     , cd_val
+		     , view_seq
+		     , del_yn
+		     , reg_no, upd_no, reg_dt, upd_dt
+		     , work_ip
+		  from tb_tcc_val 
+		 where tcc_id =  #{tccId}
+		  <if test="delYn != null"> and del_yn = #{delYn}</if>
+		 
+  	</select>
+ 
+ 	<!-- 코드(상세)값 조회, 기존재 여부 체크 용도로도 사용(delYn 포함) -->
+	<select id="selectCodeValOne" parameterType="java.util.HashMap"
+			resultType="com.lgl.gms.webapi.sys.dto.response.TccValResponse" >
+		select tccv_id
+		     , tcc_id
+		     , std_cd
+		     , std_cd_nm, std_cd_nm_eng
+		     , cd_val
+		     , view_seq
+		     , del_yn
+		     , reg_no, upd_no, reg_dt, upd_dt
+		     , work_ip
+		  from tb_tcc_val 
+		 where tcc_id = #{tccId}
+		   and std_cd = #{stdCd}
+		 
+  	</select>
+
+ 	<!-- 코드 유형의 하부 코드값 건수 조회, 삭제 flag건도 포함 -->
+	<select id="selectCodeValCnt" parameterType="java.util.HashMap"
+			resultType="Integer" >
+		select count(1) from tb_tcc_val 
+		 where tcc_id =  #{tccId}
+	</select>
+	
+   	<!-- 코드(상세)값 추가  -->
+   	<insert id="insertCodeVal" parameterType="com.lgl.gms.webapi.sys.persistence.model.TccValModel">
+		 insert into tb_tcc_val 
+			   ( tcc_id
+			   , std_cd
+			   , std_cd_nm, std_cd_nm_eng
+			   , cd_val
+			   , view_seq
+			   , reg_no
+			   , reg_dt
+			   , work_ip
+			   )
+		 values 
+			   ( #{tccId}
+			   , #{stdCd}
+			   , #{stdCdNm}, #{stdCdNmEng}
+			   , #{cdVal}
+			   , #{viewSeq}
+			   , #{regNo}
+			   , now()
+			   , #{workIp}
+			   )
+
+		<selectKey resultType="Integer" keyProperty="tccvId" order="AFTER">
+       		SELECT LAST_INSERT_ID()
+   		</selectKey>
+  	</insert>
+
+  	<!-- 코드(상세)값 수정  -->
+  	<!-- tccvId 또는 tccId+stdCd로 수정 가능 -->
+  	<update id="updateCodeVal" parameterType="com.lgl.gms.webapi.sys.persistence.model.TccValModel">
+  	
+		update tb_tcc_val
+		   <set>
+		      upd_dt = now() 
+		      <if test="stdCd      != null">, std_cd        = #{stdCd}   </if>
+		      <if test="stdCdNm    != null">, std_cd_nm     = #{stdCdNm}   </if>
+		      <if test="stdCdNmEng != null">, std_cd_nm_eng = #{stdCdNmEng}</if>
+		      <if test="cdVal      != null">, cd_val        = #{cdVal}     </if>
+		      <if test="viewSeq    != null">, view_seq      = #{viewSeq}   </if>
+		      <if test="updNo      != null">, upd_no        = #{updNo}     </if>
+		      <if test="workIp     != null">, work_ip       = #{workIp}    </if>
+			</set>
+		 where tccv_id = #{tccvId}
+		  
+  	</update>
+
+  	<!-- 코드(상세)값 삭제  -->
+  	<update id="deleteCodeVal"  parameterType="com.lgl.gms.webapi.sys.persistence.model.TccValModel">
+		update tb_tcc_val
+		   <set>
+		       upd_dt = now() 
+		     , del_yn = 'Y'
+ 	          <if test="updNo  != null">, upd_no  = #{updNo}     </if>
+		      <if test="workIp != null">, work_ip = #{workIp}    </if>
+			</set>
+		 where tccv_id = #{tccvId}
+
+  	</update>
+  
+    <!-- 코드(상세)값 삭제(실제 삭제), 하위테이블 까지 삭제 -->
+  	<delete id="deleteCodeValReal"  parameterType="com.lgl.gms.webapi.sys.persistence.model.TccValModel">
+		delete from tb_tcc_val
+		 where tccv_id = #{tccvId}
+
+  	</delete>
+ 
+ 	<!-- ==========================================================================  --> 	
+   	<!-- 서비스 유형 조회  -->
+	<select id="selectSvcTypeList" parameterType="java.util.HashMap"
+			resultType="com.lgl.gms.webapi.sys.dto.response.SvcTypResponse" >
+		select tccv_id
+		     , svc_typ
+		     , cl1_cd
+		     , svc_nm, svc_snm
+		     , svc_nm_eng, svc_snm_eng
+		     , view_seq
+		     , del_yn
+		     , reg_no, upd_no, reg_dt, upd_dt
+		     , work_ip
+		 from tb_svc_typ
+		where 1 = 1
+		  <if test="tccvId != null">and tccv_id = #{tccvId}</if>
+		  <if test="delYn != null"> and del_yn  = #{delYn} </if>
+	 order by view_seq
+  	</select>
+
+    <!-- 서비스 유형 조회 1건, 기존재 여부 체크 용도로도 사용(delYn 포함) -->
+	<select id="selectSvcTypeOne" parameterType="java.util.HashMap"
+			resultType="com.lgl.gms.webapi.sys.dto.response.SvcTypResponse" >
+		select tccv_id
+		     , svc_typ
+		     , cl1_cd
+		     , svc_nm, svc_snm
+		     , svc_nm_eng, svc_snm_eng
+		     , view_seq
+		     , del_yn
+		     , reg_no, upd_no, reg_dt, upd_dt
+		     , work_ip
+		 from tb_svc_typ
+		where tccv_id = #{tccvId}
+		  and svc_typ = #{svcTyp}
+		 
+  	</select>
+  	
+  	 	<!-- 코드 유형의 하부 코드값 건수 조회  -->
+	<select id="selectSvcTypeCnt" parameterType="java.util.HashMap"
+			resultType="com.lgl.gms.webapi.sys.dto.response.TccValResponse" >
+		select count(1) from tb_svc_typ
+		 where tccv_id =  #{tccvId}
+	</select>
+	
+   	<!-- 서비스 유형 추가  -->
+   	<insert id="insertSvcType" parameterType="com.lgl.gms.webapi.sys.persistence.model.SvcTypModel">
+		insert into tb_svc_typ 
+			  ( tccv_id
+			  , svc_typ
+			  , cl1_cd
+			  , svc_nm, svc_snm, svc_nm_eng, svc_snm_eng
+			  , view_seq
+			  , reg_no
+			  , reg_dt
+			  , work_ip
+			  )
+		VALUES 
+			  ( #{tccvId}
+			  , #{svcTyp}
+			  , #{cl1Cd}
+			  , #{svcNm}, #{svcSnm}, #{svcNmEng}, #{svcSnmEng}
+			  , #{viewSeq}
+			  , #{regNo}
+			  , now()
+			  , #{workIp}
+			  )
+
+  	</insert>
+
+  	<!-- 서비스 유형 수정  -->
+  	<update id="updateSvcType" parameterType="com.lgl.gms.webapi.sys.persistence.model.SvcTypModel">
+  	
+		update tb_svc_typ
+		   <set>
+		      upd_dt = now() 
+		       <if test="cl1Cd     != null">, cl1_cd      = #{cl1Cd}    </if>
+		       <if test="svcNm     != null">, svc_nm      = #{svcNm}    </if>
+		       <if test="svcSnm    != null">, svc_snm     = #{svcSnm}   </if>
+		       <if test="svcNmEng  != null">, svc_nm_eng  = #{svcNmEng} </if>
+		       <if test="svcSnmEng != null">, svc_snm_eng = #{svcSnmEng}</if>
+		       <if test="viewSeq   != null">, view_seq    = #{viewSeq}  </if>
+		       <if test="updNo     != null">, upd_no      = #{updNo}    </if>
+		       <if test="workIp    != null">, work_ip     = #{workIp}   </if>
+			</set>
+		   where tccv_id = #{tccvId}
+		     and svc_typ = #{svcTyp}
+ 
+  	</update>
+
+  	<!-- 서비스 유형 삭제  -->
+  	<update id="deleteSvcType"  parameterType="com.lgl.gms.webapi.sys.persistence.model.SvcTypModel">
+  	
+  		  update tb_svc_typ
+		   <set>
+		        upd_dt = now() 
+		      , del_yn = 'Y'
+		       <if test="updNo  != null">, upd_no  = #{updNo}    </if>
+		       <if test="workIp != null">, work_ip = #{workIp}   </if>
+			</set>
+		   where tccv_id = #{tccvId}
+		     and svc_typ = #{svcTyp}
+		     
+  	</update>
+
+    <!-- 코드유형 삭제(실제 삭제)  -->
+  	<delete id="deleteSvcTypeReal"  parameterType="com.lgl.gms.webapi.sys.persistence.model.SvcTypModel">
+		delete from tb_svc_typ
+		 where tccv_id = #{tccvId}
+		   and svc_typ = #{svcTyp}
+  	</delete>
+  	
+</mapper>
+
+

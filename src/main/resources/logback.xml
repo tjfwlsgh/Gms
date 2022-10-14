@@ -1,0 +1,109 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<configuration scan="true" scanPeriod="60 seconds">
+	<property name="LOG_PATTERN" value="[%d{HH:mm:ss.SSS}] [%.7thread] [%-5level] [%X{LOG_KEY}] %m %n "/>
+	<property name="LOG_HOME" value="logs"/>
+	<contextListener class="ch.qos.logback.classic.jul.LevelChangePropagator">
+		<resetJUL>true</resetJUL>
+	</contextListener>
+	<statusListener class="ch.qos.logback.core.status.NopStatusListener" />
+	
+	<appender name="consoleAppender" class="ch.qos.logback.core.ConsoleAppender">
+		 <encoder>
+            <pattern>${LOG_PATTERN}</pattern>
+        </encoder>
+	</appender>
+   <appender name="ApiLog" class="ch.qos.logback.core.rolling.RollingFileAppender">
+   		<filter class="com.lgl.gms.config.ExceptLogFiilter" />
+    	<file>${LOG_HOME}/api.log</file>
+		<rollingPolicy class="ch.qos.logback.core.rolling.TimeBasedRollingPolicy">
+			<fileNamePattern>${LOG_HOME}/prov.%d{yyyy-MM-dd}.%i.log.zip</fileNamePattern>
+			<timeBasedFileNamingAndTriggeringPolicy class="ch.qos.logback.core.rolling.SizeAndTimeBasedFNATP">
+                <maxFileSize>1000MB</maxFileSize>
+            </timeBasedFileNamingAndTriggeringPolicy>
+            <maxHistory>30</maxHistory>
+		</rollingPolicy>
+		 <encoder>
+            <pattern>${LOG_PATTERN}</pattern>
+        </encoder>
+	
+	</appender>
+	
+ 	<appender name="dbLog" class="ch.qos.logback.core.rolling.RollingFileAppender">
+        <file>${LOG_HOME}/db.log</file>
+                <rollingPolicy class="ch.qos.logback.core.rolling.TimeBasedRollingPolicy">
+                        <fileNamePattern>${LOG_HOME}/db.%d{yyyy-MM-dd}.%i.log.zip</fileNamePattern>
+                        <timeBasedFileNamingAndTriggeringPolicy class="ch.qos.logback.core.rolling.SizeAndTimeBasedFNATP">
+                <maxFileSize>1000MB</maxFileSize>
+            </timeBasedFileNamingAndTriggeringPolicy>
+            <maxHistory>30</maxHistory>
+                </rollingPolicy>
+                 <encoder>
+            <pattern>${LOG_PATTERN}</pattern>
+        </encoder>
+
+   </appender>
+   
+    <logger name="org.springframework" level="WARN" additivity="false">
+    	<appender-ref ref="ApiLog"/>
+		<appender-ref ref="consoleAppender"/>    	
+	</logger>    
+	
+	<!-- TOMCAT PORT 확인용 -->
+	<logger name="org.springframework.boot.web.embedded.tomcat.TomcatWebServer" level="INFO" additivity="false">
+    	<appender-ref ref="ApiLog"/>
+		<appender-ref ref="consoleAppender"/>    	
+	</logger>
+	
+	<!-- 업무별 DB log 설정 -->		
+    <logger name="com.lgl.gms.webapi.sample.persistence.dao" level="DEBUG" additivity="false">
+    	<appender-ref ref="consoleAppender"/>    	
+        <appender-ref ref="dbLog"/>
+    </logger>
+    <logger name="com.lgl.gms.webapi.inc.persistence.dao" level="DEBUG" additivity="false">
+    	<appender-ref ref="consoleAppender"/>    	
+        <appender-ref ref="dbLog"/>
+    </logger>
+    <logger name="com.lgl.gms.webapi.fin.persistence.dao" level="DEBUG" additivity="false">
+    	<appender-ref ref="consoleAppender"/>    	
+        <appender-ref ref="dbLog"/>
+    </logger>
+    <logger name="com.lgl.gms.webapi.inf.persistence.dao" level="DEBUG" additivity="false">
+    	<appender-ref ref="consoleAppender"/>    	
+        <appender-ref ref="dbLog"/>
+    </logger>
+    <logger name="com.lgl.gms.webapi.bse.persistence.dao" level="DEBUG" additivity="false">
+    	<appender-ref ref="consoleAppender"/>    	
+        <appender-ref ref="dbLog"/>
+    </logger>
+    <logger name="com.lgl.gms.webapi.anl.persistence.dao" level="DEBUG" additivity="false">
+    	<appender-ref ref="consoleAppender"/>    	
+        <appender-ref ref="dbLog"/>
+    </logger>
+    <logger name="com.lgl.gms.webapi.sys.persistence.dao" level="DEBUG" additivity="false">
+    	<appender-ref ref="consoleAppender"/>    	
+        <appender-ref ref="dbLog"/>
+    </logger>
+    	
+	<!-- AJP확인용 -->	
+	<logger name="org.apache.coyote.ajp.AjpNioProtocol" level="INFO" additivity="false">
+    	<appender-ref ref="ApiLog"/>
+		<appender-ref ref="consoleAppender"/>    	
+	</logger>  
+	
+	<!-- webapi log 설정 -->	
+	<logger name="com.lgl.gms.webapi" level="DEBUG" additivity="false">
+		<appender-ref ref="ApiLog"/>
+		<appender-ref ref="consoleAppender"/>				
+	</logger>
+	
+	<logger name="com.zaxxer.hikari.HikariConfig" level="DEBUG" additivity="false">
+		<appender-ref ref="consoleAppender"/>	
+		 <appender-ref ref="dbLog"/>			
+	</logger>
+	
+	<logger name="com.zaxxer.hikari.pool.HikariPool" level="INFO" additivity="false">
+		<appender-ref ref="consoleAppender"/>	
+		 <appender-ref ref="dbLog"/>			
+	</logger>
+
+</configuration>

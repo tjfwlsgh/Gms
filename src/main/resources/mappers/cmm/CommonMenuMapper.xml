@@ -1,0 +1,106 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+ 	@FileName    : CommonMenuMapper.java
+	@Date        :
+ 	@Author      :
+ 	@Description : DB Query Mapper xml
+ 	@History     :
+ -->
+<!DOCTYPE mapper
+    PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+    "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+    
+<mapper namespace="com.lgl.gms.webapi.cmm.persistence.dao.CommonMenuDao">
+	
+	<resultMap id="CommonMenuMap" type="com.lgl.gms.webapi.cmm.dto.response.CommonMenuResponse">
+		<id property="menuCd" column="menu_cd" />
+		<result property="menuNm" column="menu_nm"/>
+		<result property="menuNmEng" column="menu_nm_eng"/>
+		<result property="menuSeqCd" column="menu_seq_cd"/>
+		<result property="authCd" column="auth_cd"/>
+	  <collection column="{authCd=auth_cd, menuCd=menu_cd}" property="subMenus" 
+	       javaType="java.util.ArrayList" select="selectSubMenuList" 
+	       ofType="com.lgl.gms.webapi.cmm.dto.response.CommonSubMenuResponse">
+	  </collection>
+	</resultMap>
+	
+  	<!-- 메뉴리스트 조회  -->
+    <select id="selectMenuList" parameterType="com.lgl.gms.webapi.cmm.dto.request.CommonMenuRequest" resultMap="CommonMenuMap" >
+		select a.top_menu_cd as menu_cd
+		     , b.pgm_id
+		     , b.pgm_nm as menu_nm
+		     , b.pgm_nm_eng as menu_nm_eng
+		     , b.top_menu_cd as menu_seq_cd
+		     , a.auth_cd
+		  from ( select distinct top_menu_cd, auth_cd
+				   from tb_pgm_auth 
+				  where auth_cd = #{authCd}
+				    and del_yn = 'N' ) a
+		     , ( select pgm_id
+		              , pgm_nm, pgm_nm_eng
+		              , top_menu_cd
+		              , view_seq
+		           from tb_pgm 
+		          where pgm_typ = 'MENU' 
+		            and comp_id = #{compId} 
+		            and del_yn = 'N' ) b
+		  where a.top_menu_cd = b.pgm_id 
+		  order by b.view_seq
+    </select>
+    
+    <!-- 서브메뉴 리스트 조회  -->
+    <select id="selectSubMenuList" parameterType="java.util.Map" resultType="com.lgl.gms.webapi.cmm.dto.response.CommonSubMenuResponse" >
+		select a.pgm_id as menu_cd
+		     , b.pgm_nm as menu_nm
+		     , b.pgm_nm_eng as menu_nm_eng
+		     , a.view_seq
+		     , a.auth_cd
+			 , a.top_menu_cd
+		--     , a.view_menu_cd
+		--     , b.pgm_id
+		     , b.link_file as pgm_web_page
+		     , b.grp_nm
+		     , b.grp_nm_eng
+		  from tb_pgm_auth a
+		  join tb_pgm b on (a.pgm_id = b.pgm_id and b.del_yn = 'N') 
+		 where a.auth_cd = #{authCd}
+		   and a.top_menu_cd = #{menuCd}
+		   and a.del_yn = 'N'  
+		 order by a.view_seq
+    </select>
+
+    <!-- 권한리스트 조회  -->
+    <select id="selectAuthList" parameterType="com.lgl.gms.webapi.cmm.dto.request.CommonAuthRequest"
+    		resultType="com.lgl.gms.webapi.cmm.dto.response.CommonAuthResponse" >
+		select a.pgm_id as menu_cd
+		     , b.pgm_nm as menu_nm
+		     , b.pgm_nm_eng as menu_nm_eng
+			 , b.link_file as pgm_web_page
+		     , a.view_seq
+		     , a.view_auth
+		     , a.add_auth
+		     , a.chg_auth
+		     , a.del_auth
+		     , a.dwl_auth
+		     , a.upl_auth
+		     , a.sve_auth	
+		     , a.cls_auth	     
+		     , a.auth_cd
+			 , a.top_menu_cd
+		    -- , a.view_menu_cd
+		  from tb_pgm_auth a
+		     , (select pgm_id
+		              , pgm_nm, pgm_nm_eng
+		              , top_menu_cd
+		              , link_file
+		           from tb_pgm 
+		          where pgm_typ = 'PGM'  
+		            and comp_id = #{compId}
+		            and del_yn = 'N' ) b 
+		 where a.pgm_id = b.pgm_id
+		   and a.auth_cd = #{authCd}
+		   and a.del_yn = 'N'  
+		 order by a.view_seq
+    </select>
+    
+</mapper>

@@ -1,0 +1,351 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+ 	@FileName    : IncPerfInqDao.java
+	@Date        	: 2022.03.18
+ 	@Author      : jokim
+ 	@Description : 손익조회 DAO DB Query Mapper xml
+ 	@History     :
+ -->
+<!DOCTYPE mapper
+    PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+    "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="com.lgl.gms.webapi.inc.persistence.dao.IncPerfInqDao">
+  	
+  	<sql id="selectIncPerfInqs">
+  		select t.* 
+			, sum(ifnull(mon_01_amt,0)+ifnull(mon_02_amt,0)+ifnull(mon_03_amt,0)+ifnull(mon_04_amt,0)+ifnull(mon_05_amt,0)
+				+ifnull(mon_06_amt,0)+ifnull(mon_07_amt,0)+ifnull(mon_08_amt,0)+ifnull(mon_09_amt,0)
+				+ifnull(mon_10_amt,0)+ifnull(mon_11_amt,0)+ifnull(mon_12_amt,0)) sum
+		  from 
+		  (
+			select max(t.inc_yy) inc_yy
+				,t.inc_itm1
+				,t.inc_itm2
+				,t.inc_itm3
+				,f_get_item_nm(t.inc_itm_id, #{locale}) as itm_nm
+				
+				,sum(if( 1 >= CAST(SUBSTR(#{stYymm}, 5) AS SIGNED) and CAST(SUBSTR(#{endYymm}, 5) AS SIGNED) >= 1, t.mon_01_amt, NULL)) mon_01_amt
+				,sum(if( 2 >= CAST(SUBSTR(#{stYymm}, 5) AS SIGNED) and CAST(SUBSTR(#{endYymm}, 5) AS SIGNED) >= 2, t.mon_02_amt, NULL)) mon_02_amt
+				,sum(if( 3 >= CAST(SUBSTR(#{stYymm}, 5) AS SIGNED) and CAST(SUBSTR(#{endYymm}, 5) AS SIGNED) >= 3, t.mon_03_amt, NULL)) mon_03_amt
+				,sum(if( 4 >= CAST(SUBSTR(#{stYymm}, 5) AS SIGNED) and CAST(SUBSTR(#{endYymm}, 5) AS SIGNED) >= 4, t.mon_04_amt, NULL)) mon_04_amt
+				,sum(if( 5 >= CAST(SUBSTR(#{stYymm}, 5) AS SIGNED) and CAST(SUBSTR(#{endYymm}, 5) AS SIGNED) >= 5, t.mon_05_amt, NULL)) mon_05_amt
+				,sum(if( 6 >= CAST(SUBSTR(#{stYymm}, 5) AS SIGNED) and CAST(SUBSTR(#{endYymm}, 5) AS SIGNED) >= 6, t.mon_06_amt, NULL)) mon_06_amt
+				,sum(if( 7 >= CAST(SUBSTR(#{stYymm}, 5) AS SIGNED) and CAST(SUBSTR(#{endYymm}, 5) AS SIGNED) >= 7, t.mon_07_amt, NULL)) mon_07_amt
+				,sum(if( 8 >= CAST(SUBSTR(#{stYymm}, 5) AS SIGNED) and CAST(SUBSTR(#{endYymm}, 5) AS SIGNED) >= 8, t.mon_08_amt, NULL)) mon_08_amt
+				,sum(if( 9 >= CAST(SUBSTR(#{stYymm}, 5) AS SIGNED) and CAST(SUBSTR(#{endYymm}, 5) AS SIGNED) >= 9, t.mon_09_amt, NULL)) mon_09_amt
+				,sum(if( 10 >= CAST(SUBSTR(#{stYymm}, 5) AS SIGNED) and CAST(SUBSTR(#{endYymm}, 5) AS SIGNED) >= 10, t.mon_10_amt, NULL)) mon_10_amt
+				,sum(if( 11 >= CAST(SUBSTR(#{stYymm}, 5) AS SIGNED) and CAST(SUBSTR(#{endYymm}, 5) AS SIGNED) >= 11, t.mon_11_amt, NULL)) mon_11_amt
+				,sum(if( 12 >= CAST(SUBSTR(#{stYymm}, 5) AS SIGNED) and CAST(SUBSTR(#{endYymm}, 5) AS SIGNED) >= 12, t.mon_12_amt, NULL)) mon_12_amt
+				
+				,inc_itm_id
+				,t.view_seq
+				,t.lv_cl
+		  <if test="boIds != null and boIds.size() == 1">
+			 <if test="includeMemo == null or includeMemo != false">
+				,max(t.mon_01_memo) as mon_01_memo
+				,max(t.mon_02_memo) as mon_02_memo
+				,max(t.mon_03_memo) as mon_03_memo
+				,max(t.mon_04_memo) as mon_04_memo
+				,max(t.mon_05_memo) as mon_05_memo
+				,max(t.mon_06_memo) as mon_06_memo
+				,max(t.mon_07_memo) as mon_07_memo
+				,max(t.mon_08_memo) as mon_08_memo
+				,max(t.mon_09_memo) as mon_09_memo
+				,max(t.mon_10_memo) as mon_10_memo
+				,max(t.mon_11_memo) as mon_11_memo
+				,max(t.mon_12_memo) as mon_12_memo
+			 </if>
+				,max(t.mon_01_chg_dt) mon_01_chg_dt
+				,max(t.mon_02_chg_dt) mon_02_chg_dt
+				,max(t.mon_03_chg_dt) mon_03_chg_dt
+				,max(t.mon_04_chg_dt) mon_04_chg_dt
+				,max(t.mon_05_chg_dt) mon_05_chg_dt
+				,max(t.mon_06_chg_dt) mon_06_chg_dt
+				,max(t.mon_07_chg_dt) mon_07_chg_dt
+				,max(t.mon_08_chg_dt) mon_08_chg_dt
+				,max(t.mon_09_chg_dt) mon_09_chg_dt
+				,max(t.mon_10_chg_dt) mon_10_chg_dt
+				,max(t.mon_11_chg_dt) mon_11_chg_dt
+				,max(t.mon_12_chg_dt) mon_12_chg_dt
+				
+				,max(t.mon_01_memo_id) mon_01_memo_id
+				,max(t.mon_02_memo_id) mon_02_memo_id
+				,max(t.mon_03_memo_id) mon_03_memo_id
+				,max(t.mon_04_memo_id) mon_04_memo_id
+				,max(t.mon_05_memo_id) mon_05_memo_id
+				,max(t.mon_06_memo_id) mon_06_memo_id
+				,max(t.mon_07_memo_id) mon_07_memo_id
+				,max(t.mon_08_memo_id) mon_08_memo_id
+				,max(t.mon_09_memo_id) mon_09_memo_id
+				,max(t.mon_10_memo_id) mon_10_memo_id
+				,max(t.mon_11_memo_id) mon_11_memo_id
+				,max(t.mon_12_memo_id) mon_12_memo_id	
+			</if>				
+			 from (
+				select b.inc_itm_id
+					,a.inc_yy
+					,b.inc_itm1
+					,b.inc_itm2
+					,b.inc_itm3
+					,b.lv_cl
+					
+					,if( #{untDp}='10', a.mon_01_amt, ROUND(a.mon_01_amt * if(a.crncy_cd='KRW', 1, c.M01_EXR)/u.unt, 2) ) as mon_01_amt
+					,if( #{untDp}='10', a.mon_02_amt, ROUND(a.mon_02_amt * if(a.crncy_cd='KRW', 1, c.M02_EXR)/u.unt, 2) ) as mon_02_amt
+					,if( #{untDp}='10', a.mon_03_amt, ROUND(a.mon_03_amt * if(a.crncy_cd='KRW', 1, c.M03_EXR)/u.unt, 2) ) as mon_03_amt
+					,if( #{untDp}='10', a.mon_04_amt, ROUND(a.mon_04_amt * if(a.crncy_cd='KRW', 1, c.M04_EXR)/u.unt, 2) ) as mon_04_amt
+					,if( #{untDp}='10', a.mon_05_amt, ROUND(a.mon_05_amt * if(a.crncy_cd='KRW', 1, c.M05_EXR)/u.unt, 2) ) as mon_05_amt
+					,if( #{untDp}='10', a.mon_06_amt, ROUND(a.mon_06_amt * if(a.crncy_cd='KRW', 1, c.M06_EXR)/u.unt, 2) ) as mon_06_amt
+					,if( #{untDp}='10', a.mon_07_amt, ROUND(a.mon_07_amt * if(a.crncy_cd='KRW', 1, c.M07_EXR)/u.unt, 2) ) as mon_07_amt
+					,if( #{untDp}='10', a.mon_08_amt, ROUND(a.mon_08_amt * if(a.crncy_cd='KRW', 1, c.M08_EXR)/u.unt, 2) ) as mon_08_amt
+					,if( #{untDp}='10', a.mon_09_amt, ROUND(a.mon_09_amt * if(a.crncy_cd='KRW', 1, c.M09_EXR)/u.unt, 2) ) as mon_09_amt
+					,if( #{untDp}='10', a.mon_10_amt, ROUND(a.mon_10_amt * if(a.crncy_cd='KRW', 1, c.M10_EXR)/u.unt, 2) ) as mon_10_amt
+					,if( #{untDp}='10', a.mon_11_amt, ROUND(a.mon_11_amt * if(a.crncy_cd='KRW', 1, c.M11_EXR)/u.unt, 2) ) as mon_11_amt
+					,if( #{untDp}='10', a.mon_12_amt, ROUND(a.mon_12_amt * if(a.crncy_cd='KRW', 1, c.M12_EXR)/u.unt, 2) ) as mon_12_amt
+			
+					,m.*
+										
+					,a.acc_cl
+					,pln_ret_cl
+					,c.*
+					,b.view_seq
+				 from tb_inc_itm_info b
+				 	left join (
+			
+							select  a.acc_cl, b.inc_itm_id, a.pln_ret_cl, a.inc_yy, a.bo_id, a.crncy_cd
+					  			, a.mon_01_amt
+								, a.mon_02_amt
+								, a.mon_03_amt
+								, a.mon_04_amt
+								, a.mon_05_amt
+								, a.mon_06_amt
+								, a.mon_07_amt
+								, a.mon_08_amt
+								, a.mon_09_amt
+								, a.mon_10_amt
+								, a.mon_11_amt
+								, a.mon_12_amt
+					  		 from tb_bo_inc_agg a, tb_inc_itm_info b
+					  		where 1=1
+					  		 and a.inc_itm_id = b.inc_itm_id
+					  		 and !(b.lv_cl = 0 and ifnull(b.KRW_YN, 'N') = 'Y')
+					  		 
+					  		<if test="boIds != null and boIds.size() > 0">
+							   and a.bo_id in
+								<foreach collection="boIds" item="boId" open="(" close=")" separator=",">
+									#{boId}
+			 					</foreach>
+							</if>
+							<if test="boIds == null or boIds.size() == 0">
+				               and a.bo_id in (
+									 select t.bo_id
+									   from tb_bo t
+									  where t.comp_id = #{compId}
+									   and t.bo_cl = 'H'
+									   and t.use_yn = 'Y'										 	
+				               		)					                   	
+							</if>
+							<if test="plnRetCl != null and plnRetCl != 'LY'">
+								and a.inc_yy =  SUBSTR(#{endYymm}, 1, 4)
+								and a.pln_ret_cl = #{plnRetCl}
+							</if>
+							<if test="plnRetCl != null and plnRetCl == 'LY'">
+								and a.inc_yy = CAST(SUBSTR(#{endYymm}, 1, 4) AS SIGNED)-1
+								and a.pln_ret_cl = 'R'
+							</if>					
+								and a.def_cl = #{defCl}
+														 
+						  union all 
+							 
+							 select  a.acc_cl, b.inc_itm_id, a.pln_ret_cl, a.inc_yy, a.bo_id, a.crncy_cd
+					  			, a.mon_01_amt * sb.frml_sign AS mon_01_amt
+								, a.mon_02_amt * sb.frml_sign AS mon_02_amt
+								, a.mon_03_amt * sb.frml_sign AS mon_03_amt
+								, a.mon_04_amt * sb.frml_sign AS mon_04_amt
+								, a.mon_05_amt * sb.frml_sign AS mon_05_amt
+								, a.mon_06_amt * sb.frml_sign AS mon_06_amt
+								, a.mon_07_amt * sb.frml_sign AS mon_07_amt
+								, a.mon_08_amt * sb.frml_sign AS mon_08_amt
+								, a.mon_09_amt * sb.frml_sign AS mon_09_amt
+								, a.mon_10_amt * sb.frml_sign AS mon_10_amt
+								, a.mon_11_amt * sb.frml_sign AS mon_11_amt
+								, a.mon_12_amt * sb.frml_sign AS mon_12_amt
+					  		 from tb_bo_inc_agg a, tb_inc_itm_info b, vw_inc_itm_info_sub_map sb
+					  		where 1=1
+					  		 and a.inc_itm_id = sb.sub_inc_itm_id
+					  		 and b.inc_itm_id = sb.inc_itm_id 
+					  		 and (b.lv_cl = 0 and ifnull(b.krw_yn, 'N') = 'Y')
+					  		 
+					  		<if test="boIds != null and boIds.size() > 0">
+							   and a.bo_id in
+								<foreach collection="boIds" item="boId" open="(" close=")" separator=",">
+									#{boId}
+			 					</foreach>
+							</if>
+							<if test="boIds == null or boIds.size() == 0">
+				               and a.bo_id in (
+									 select t.bo_id
+									   from tb_bo t
+									  where t.comp_id = #{compId}
+									   and t.bo_cl = 'H'
+									   and t.use_yn = 'Y'										 	
+				               		)					                   	
+							</if>
+							<if test="plnRetCl != null and plnRetCl != 'LY'">
+								and a.inc_yy =  SUBSTR(#{endYymm}, 1, 4)
+								and a.pln_ret_cl = #{plnRetCl}
+							</if>
+							<if test="plnRetCl != null and plnRetCl == 'LY'">
+								and a.inc_yy = CAST(SUBSTR(#{endYymm}, 1, 4) AS SIGNED)-1
+								and a.pln_ret_cl = 'R'
+							</if>					
+								and a.def_cl = #{defCl}
+						
+						) a on a.inc_itm_id = b.inc_itm_id
+
+					left join ( select m.inc_itm_id inc_itm_id1
+									 ,max(if(m.MEMO_MON = '1', m.MEMO, NULL)) as mon_01_memo
+									 ,max(if(m.MEMO_MON = '2', m.MEMO, NULL)) as mon_02_memo
+									 ,max(if(m.MEMO_MON = '3', m.MEMO, NULL)) as mon_03_memo
+									 ,max(if(m.MEMO_MON = '4', m.MEMO, NULL)) as mon_04_memo
+									 ,max(if(m.MEMO_MON = '5', m.MEMO, NULL)) as mon_05_memo
+									 ,max(if(m.MEMO_MON = '6', m.MEMO, NULL)) as mon_06_memo
+									 ,max(if(m.MEMO_MON = '7', m.MEMO, NULL)) as mon_07_memo
+									 ,max(if(m.MEMO_MON = '8', m.MEMO, NULL)) as mon_08_memo
+									 ,max(if(m.MEMO_MON = '9', m.MEMO, NULL)) as mon_09_memo
+									 ,max(if(m.MEMO_MON = '10', m.MEMO, NULL)) as mon_10_memo
+									 ,max(if(m.MEMO_MON = '11', m.MEMO, NULL)) as mon_11_memo
+									 ,max(if(m.MEMO_MON = '12', m.MEMO, NULL)) as mon_12_memo									 
+									 ,max(if(m.MEMO_MON = '1', DATE_FORMAT(m.chg_dt, '%Y-%m-%d'), NULL)) as mon_01_chg_dt
+									 ,max(if(m.MEMO_MON = '2', DATE_FORMAT(m.chg_dt, '%Y-%m-%d'), NULL)) as mon_02_chg_dt
+									 ,max(if(m.MEMO_MON = '3', DATE_FORMAT(m.chg_dt, '%Y-%m-%d'), NULL)) as mon_03_chg_dt
+									 ,max(if(m.MEMO_MON = '4', DATE_FORMAT(m.chg_dt, '%Y-%m-%d'), NULL)) as mon_04_chg_dt
+									 ,max(if(m.MEMO_MON = '5', DATE_FORMAT(m.chg_dt, '%Y-%m-%d'), NULL)) as mon_05_chg_dt
+									 ,max(if(m.MEMO_MON = '6', DATE_FORMAT(m.chg_dt, '%Y-%m-%d'), NULL)) as mon_06_chg_dt
+									 ,max(if(m.MEMO_MON = '7', DATE_FORMAT(m.chg_dt, '%Y-%m-%d'), NULL)) as mon_07_chg_dt
+									 ,max(if(m.MEMO_MON = '8', DATE_FORMAT(m.chg_dt, '%Y-%m-%d'), NULL)) as mon_08_chg_dt
+									 ,max(if(m.MEMO_MON = '9', DATE_FORMAT(m.chg_dt, '%Y-%m-%d'), NULL)) as mon_09_chg_dt
+									 ,max(if(m.MEMO_MON = '10', DATE_FORMAT(m.chg_dt, '%Y-%m-%d'), NULL)) as mon_10_chg_dt
+									 ,max(if(m.MEMO_MON = '11', DATE_FORMAT(m.chg_dt, '%Y-%m-%d'), NULL)) as mon_11_chg_dt
+									 ,max(if(m.MEMO_MON = '12', DATE_FORMAT(m.chg_dt, '%Y-%m-%d'), NULL)) as mon_12_chg_dt
+									 ,max(if(m.memo_mon = '1', m.memo_id, NULL)) as mon_01_memo_id
+									 ,max(if(m.memo_mon = '2', m.memo_id, NULL)) as mon_02_memo_id
+									 ,max(if(m.memo_mon = '3', m.memo_id, NULL)) as mon_03_memo_id
+									 ,max(if(m.memo_mon = '4', m.memo_id, NULL)) as mon_04_memo_id
+									 ,max(if(m.memo_mon = '5', m.memo_id, NULL)) as mon_05_memo_id
+									 ,max(if(m.memo_mon = '6', m.memo_id, NULL)) as mon_06_memo_id
+									 ,max(if(m.memo_mon = '7', m.memo_id, NULL)) as mon_07_memo_id
+									 ,max(if(m.memo_mon = '8', m.memo_id, NULL)) as mon_08_memo_id
+									 ,max(if(m.memo_mon = '9', m.memo_id, NULL)) as mon_09_memo_id
+									 ,max(if(m.memo_mon = '10', m.memo_id, NULL)) as mon_10_memo_id
+									 ,max(if(m.memo_mon = '11', m.memo_id, NULL)) as mon_11_memo_id
+									 ,max(if(m.memo_mon = '12', m.memo_id, NULL)) as mon_12_memo_id
+								 from tb_bo_inc_memo m
+								where memo_ver in (
+												 select max(memo_ver) from tb_bo_inc_memo tm 
+													group by tm.bo_id, tm.pln_ret_cl, tm.def_cl, tm.inc_yy, tm.memo_mon, tm.inc_itm_id
+												)
+									<!-- and bo_id = #{boId}  -->
+								<if test="boIds != null and boIds.size() == 1">
+									and m.bo_id in
+	                                 <foreach collection="boIds" item="boId" open="(" close=")" separator=",">
+	                                    #{boId}
+	                                 </foreach>
+								</if>
+								
+								<if test="boIds == null or boIds.size() != 1">
+									and 1 != 1
+								</if>
+							
+							 	<if test="plnRetCl != null and plnRetCl != 'LY'">
+							 		and m.inc_yy = SUBSTR(#{endYymm}, 1, 4)
+							 		and m.pln_ret_cl = #{plnRetCl}
+							 	</if>
+							 	
+							 	<if test="plnRetCl != null and plnRetCl == 'LY'">
+							 		and m.inc_yy = CAST(SUBSTR(#{endYymm}, 1, 4) AS SIGNED)-1
+							 		and m.pln_ret_cl = 'R'
+							 	</if>								 	
+							 		and m.def_cl = #{defCl}
+									and m.del_yn = 'N'								 		
+							group by inc_itm_id
+						) m on m.inc_itm_id1 = a.inc_itm_id
+				<if test="plnRetCl != null and plnRetCl == 'P'.toString()">
+					left join vw_exchg_rate_yy_pln c on a.crncy_cd = c.crncy_cd and a.inc_yy = c.yyyy
+				</if>
+				<if test="plnRetCl != 'P'.toString()">
+					left join vw_exchg_rate_yy_ret c on a.crncy_cd = c.crncy_cd and a.inc_yy = c.yyyy
+				</if>					
+					left join (select CAST(cd_val AS SIGNED) unt from tb_tcc_val t1, tb_tcc t2 where t2.BSE_CD = 'UNTDP' and t1.tcc_id = t2.tcc_id and t1.STD_CD = #{untDp}) u on 1=1
+				 where 1=1
+				  and b.comp_id = #{compId}
+				  and b.del_yn = 'N'
+				  and !(#{untDp} ='10' and ifnull(b.krw_yn, 'N')='Y')
+			 ) t
+			 group by inc_itm_id, t.inc_itm1, t.inc_itm2, t.inc_itm3
+		 ) t	
+  		 group by inc_itm_id
+  		order by view_seq
+  	</sql>
+  	
+  	<!-- 손익조회 리스트 조회 -->
+	<select id="selectIncPerfInqList" resultType="com.lgl.gms.webapi.inc.dto.response.BoIncPerfInqResponse" parameterType="com.lgl.gms.webapi.inc.dto.request.BoIncPerfInqRequest">
+		<include refid="selectIncPerfInqs"></include>
+  	</select>
+  	
+  	<!-- 손익조회 엑셀리스트 조회 -->
+	<select id="selectIncPerfInqExcelList" resultType="com.lgl.gms.webapi.inc.dto.response.BoIncPerfInqExcelDownResponse" parameterType="com.lgl.gms.webapi.inc.dto.request.BoIncPerfInqRequest">
+		<include refid="selectIncPerfInqs"></include>
+  	</select>
+  	
+  	<!-- 메모 등록  -->
+   	<insert id="insertIncMemo" parameterType="com.lgl.gms.webapi.inc.persistence.model.BoIncMemoModel">
+   	
+ 		insert into tb_bo_inc_memo
+			 ( bo_id
+			   ,inc_yy
+			   ,def_cl
+			   ,pln_ret_cl
+			   ,inc_itm_id
+			   ,memo_mon
+			   ,memo
+			   ,memo_ver
+			   ,chg_dt
+			   ,reg_no
+			   ,del_yn
+			  )
+			 values
+	           ( 
+	           	 #{boId}
+	           	 ,#{incYy}
+	           	 ,#{defCl}
+	           	 ,#{plnRetCl}
+	           	 ,#{incItmId}
+	           	 ,#{memoMon}
+	           	 ,#{memo}
+	           	 ,if(#{memoId} is null or #{memoId} = '' ,1 , (select max(t.memo_ver) +1 from tb_bo_inc_memo t where t.memo_id = #{memoId}) )
+	           	 ,NOW()
+				 ,#{regNo}
+				 ,'N'
+			 )
+
+  	</insert> 
+  	
+  	<!--  메모삭제-->
+  	<update  id="deleteIncMemo" parameterType="com.lgl.gms.webapi.inc.persistence.model.BoIncMemoModel">
+		
+		update tb_bo_inc_memo
+		<set>
+			chg_dt = now()
+			, upd_no = #{updNo}
+			, del_yn = 'Y'			
+		</set>
+		where memo_id = #{memoId}
+
+  	</update>
+
+
+  	
+</mapper>
+
+

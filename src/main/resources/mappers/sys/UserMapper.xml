@@ -1,0 +1,319 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+ 	@FileName    : UserMapper.java
+	@Date        :
+ 	@Author      :
+ 	@Description : DB Query Mapper xml
+ 	@History     :
+ -->
+<!DOCTYPE mapper
+    PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+    "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="com.lgl.gms.webapi.sys.persistence.dao.UserDao">
+	
+  	<!-- 사용자 id로 사용자정보 취득(공통 처리에서 사용)  -->
+	<select id="selectUserById" parameterType="java.util.HashMap"
+		resultType="com.lgl.gms.webapi.sys.persistence.model.UserModel" >
+		select a.user_no, a.user_id, a.user_pwd, a.user_nm
+		     , a.comp_id
+		     , a.bo_id
+	         , if(bo_id = ( select b.cd_val from tb_tcc a
+                             inner join tb_tcc_val b on a.tcc_id = b.tcc_id
+                             where a.bse_cd = 'HOF1' )
+	               , 'Y', 'N') as hq_yn
+		     , a.user_typ
+		     , a.auth_cd, a.cntry_cd
+		     , a.ref_token
+		     , a.login_fail_cnt
+		     /* lock_dt가 현재시간보다 작으면 lock 해제 */
+		   	 , if(a.lock_dt is null, a.lock_yn, if(a.lock_dt >= now(), 'Y','N')) as lock_yn
+		     , a.lock_dt
+		     , a.use_lang
+		     , a.user_nm_eng
+		     , a.work_ip
+		     , date_format(b.pwd_chg_dt, '%Y-%m-%d %H:%i:%s') as pwd_chg_dt
+		     , if(now() >= b.pwd_chg_dt, 'Y','N') as pwd_chg_must_yn
+		  from tb_user a
+		       left join tb_user_pwd b on b.user_no = a.user_no 
+		 where a.del_yn = 'N'
+		   and a.user_id = #{userId}
+		   <if test="compId != null"> and a.comp_id = #{compId}</if>
+		   
+  	</select>
+  	
+  	<!-- 사용자리스트 조회  -->
+	<select id="selectUserList" parameterType="java.util.HashMap"
+			resultType="com.lgl.gms.webapi.sys.dto.response.UserResponse" >
+		select a.user_no
+		     , a.user_id, a.user_nm, a.user_nm_eng
+		     , a.user_typ
+		     , case a.user_typ
+		         when  'S' then  'Admin'
+        		 when 'H' then  'HQ'
+        		 when 'B' then  'BO'
+        		 else 'Etc'
+               end as user_typ_nm
+		     , a.use_lang
+		     , a.comp_id
+		     , (select if(#{langCd} = 'ko', comp_nm, comp_nm_eng) from tb_comp
+		         where comp_id = a.comp_id) as comp_nm
+		     , a.bo_id
+		     , (select if(#{langCd} = 'ko', bo_nm, bo_nm_eng) from tb_bo
+		         where bo_id = a.bo_id) as bo_nm
+		     , a.auth_cd
+		     , (select if(#{langCd} = 'ko', auth_nm, auth_nm_eng) from tb_auth_mgmt
+		         where auth_cd = a.auth_cd) as auth_nm 
+		     , a.cntry_cd
+		     , a.work_ip
+		     , a.del_yn
+		     , a.reg_no, a.upd_no, a.reg_dt, a.upd_dt
+		     , a.ref_token, a.login_fail_cnt
+		     , a.lock_yn, a.lock_dt
+		     , date_format(b.finl_pwd_upd_dt, '%Y-%m-%d %H:%i:%s') as finl_pwd_upd_dt
+		     , date_format(b.pwd_chg_dt, '%Y-%m-%d %H:%i:%s') as pwd_chg_dt
+		  from tb_user a left outer join tb_user_pwd b 
+		    on a.user_no = b.user_no
+		 where 1 = 1  
+		 <if test="delYn != null">  and del_yn  = #{delYn}</if>
+		 <if test="compId != null"> and a.comp_id = #{compId}</if>
+	 	 <if test="userTyp != null"> and a.user_typ =  #{userTyp}</if>
+	 	 <if test="userId != null"> and a.user_id like concat('%', #{userId}, '%')</if>
+		 <if test="userNm != null"> and a.user_nm like '%${userNm}%'</if>
+		 <if test="sDate != null">and a.reg_dt >= #{sDate}</if>
+    	 <if test="eDate != null">and #{eDate} >= a.reg_dt </if>
+	 	 
+  	</select>
+  	
+  	<select id="selectUserOne" parameterType="java.util.HashMap"
+			resultType="com.lgl.gms.webapi.sys.dto.response.UserResponse" >
+		select a.user_no
+		     , a.user_id, a.user_nm, a.user_nm_eng
+		     , a.user_typ
+		     , case a.user_typ
+		         when 'S' then  'Admin'
+        		 when 'H' then  'HQ'
+        		 when 'B' then  'BO'
+        		 else 'Etc'
+               end as user_typ_nm
+		     , a.comp_id
+		     , (select comp_nm from tb_comp
+		         where comp_id = a.comp_id) as comp_nm
+		     , (select comp_nm_eng from tb_comp  
+		         where comp_id = a.comp_id) as comp_nm_eng
+		     , a.bo_id
+		     , (select bo_nm from tb_bo
+		         where bo_id = a.bo_id) as bo_nm
+		     , (select bo_snm_eng from tb_bo
+		         where bo_id = a.bo_id) as bo_nm_eng
+		     , a.auth_cd, a.cntry_cd
+		     , a.work_ip
+		     , a.del_yn
+		     , a.reg_no, a.upd_no, a.reg_dt, a.upd_dt
+		     , a.ref_token, a.login_fail_cnt
+		     , a.lock_yn, a.lock_dt
+		     , a.user_typ
+		     , b.finl_pwd_upd_dt
+			 , b.pwd_chg_dt
+		  from tb_user a left outer join tb_user_pwd b 
+		    on a.user_no = b.user_no
+		 where a.user_id = #{userId}
+		 <if test="compId != null"> and a.comp_id = #{compId}</if>
+		  and a.del_yn = 'N'
+
+  	</select>
+  	
+  	<!-- 사용자 추가  -->
+   	<insert id="insertUser" parameterType="com.lgl.gms.webapi.sys.persistence.model.UserModel">
+   		insert into tb_user
+			( 
+			  user_id
+			, user_nm
+			, user_nm_eng
+			, user_pwd
+			, user_typ
+			, comp_id
+			, bo_id
+			, use_lang
+			, auth_cd
+			, cntry_cd
+			, reg_no
+			, work_ip
+			)
+		values(
+		      #{userId}
+		    , #{userNm}
+		    , #{userNmEng}
+		    , #{userPwd}
+		    , #{userTyp}
+		    , #{compId}
+		    , #{boId}
+		    , #{useLang}
+		    , #{authCd}
+		    , #{cntryCd}
+		    , #{regNo}		    
+		    , #{workIp}
+		  )
+		<selectKey resultType="Integer" keyProperty="userNo" order="AFTER">
+       		SELECT LAST_INSERT_ID()
+   		</selectKey>
+  	</insert>
+
+  	<!-- 사용자 정보업데이트  -->
+  	<update id="updateUser" parameterType="com.lgl.gms.webapi.sys.persistence.model.UserModel">
+   		update tb_user
+   		<set>
+   			upd_dt = now()
+		    <if test="updNo != null">, upd_no = #{updNo}</if>
+		    <if test="userNm != null">, user_nm = #{userNm}</if>
+		    <if test="userNmEng != null">, user_nm_eng = #{userNmEng}</if>
+		    <if test="userPwd != null">, user_pwd = #{userPwd}</if>
+			<if test="userTyp != null">, user_typ = #{userTyp}</if>
+			<if test="useLang != null">, use_lang = #{useLang}</if>
+			
+		    <if test="boId != null">, bo_id = #{boId}</if>
+		    
+		    <if test="authCd != null">, auth_cd = #{authCd}</if>
+		    <if test="cntryCd != null">, cntry_cd = #{cntryCd}</if>
+
+		    <if test="workIp != null">, work_ip = #{workIp}</if>
+		    
+		    <if test="loginFailCnt != null">, login_fail_cnt = #{loginFailCnt}</if>
+		    <if test="lockYn != null">, lock_yn = #{lockYn}, lock_dt = if(lock_yn = 'Y', date_add(now(), interval 30 minute), null) </if>
+
+		    <if test="refToken != null">, ref_token = #{refToken}</if>
+		</set>
+		where user_id = #{userId}
+		<if test="compId != null"> and comp_id = #{compId}</if>
+		
+  	</update>
+
+  	<!-- 사용자 pwd 업데이트  -->
+  	<update id="updateUserPwd" parameterType="com.lgl.gms.webapi.sys.persistence.model.UserModel">
+   		update tb_user
+   		<set>
+   		 	  upd_dt = now()
+   		 	, upd_no = #{updNo}
+		    <if test="userPwd != null">, user_pwd = #{userPwd}</if>
+		    <if test="workIp != null"> , work_ip  = #{workIp}</if>
+		</set>
+		where user_id = #{userId}
+		<if test="compId != null"> and comp_id = #{compId}</if>
+  	</update>
+
+  	<!-- 사용자 삭제  -->
+  	<update id="deleteUser"  parameterType="com.lgl.gms.webapi.sys.persistence.model.UserModel">
+		update tb_user 
+		   set del_yn = 'Y'
+		     , upd_no = #{updNo}
+		     , upd_dt = now()
+		     <if test="workIp != null">, work_ip = #{workIp}</if>
+		 where user_id = #{userId}
+		 <if test="compId != null"> and comp_id = #{compId}</if>
+  	</update>
+
+	<!-- 사용자 pwd 변경 이력 조회(1건 조회)  -->
+	<select id="selectUserPwdHistory" parameterType="com.lgl.gms.webapi.sys.dto.request.PwdChangeRequest"
+			resultType="com.lgl.gms.webapi.sys.dto.response.PwdChangeResponse" > 
+		select user_no
+		     , user_pwd
+		     , pwd_fail_cnt
+		     , fir_login_chg_yn, fir_login_dt
+		     , user_pwd_1, user_pwd_2, user_pwd_3
+		     , finl_pwd_upd_dt
+		     , reg_no, upd_no, reg_dt, upd_dt
+		     , work_ip
+		     , pwd_chg_dt
+		  from tb_user_pwd
+		 where user_no = #{userNo}
+		 
+  	</select>
+  	
+  	<!-- 사용자 pwd 변경 이력 추가(최초)  -->
+   	<insert id="insertUserPwdHistory" parameterType="com.lgl.gms.webapi.sys.persistence.model.UserModel">
+		insert into tb_user_pwd
+		   (  user_no
+		    , user_pwd
+		    , fir_login_chg_yn
+			, finl_pwd_upd_dt
+			, reg_dt
+			, reg_no
+			, pwd_chg_dt
+			, work_ip
+		   )
+		 values (
+		      #{userNo}
+		    , #{userPwd}
+		    , 'N'
+			, now()
+			, now()
+			, #{regNo}
+		    , date_add(now(), interval 90 day)
+		    , #{workIp}
+		  )
+  	</insert>
+
+	<!-- 사용자 pwd 변경 이력 update   -->
+	<!-- first 로그인 이력 및 pwd 변경 이력을 업데이트 
+	     user_pwd가 현재 pwd, user_pwd_1이 바로 이전, 2는 그 이전식으로 업데이트
+	     마지막 3회 이력만 남기고 계속 1, 2, 3으로 밀리면서 업데이트   -->
+  	<update id="updateUserPwdHistory" parameterType="com.lgl.gms.webapi.sys.persistence.model.UserModel">
+		update tb_user_pwd a1
+		     , (select user_no, user_pwd, user_pwd_1, user_pwd_2, user_pwd_3
+		             , fir_login_chg_yn, fir_login_dt 
+		          from tb_user_pwd 
+		         where user_no = #{userNo} 
+		       ) a2
+		   set a1.finl_pwd_upd_dt = now()
+		     , a1.upd_dt = now()
+		     , a1.upd_no = #{updNo}
+		     , a1.pwd_chg_dt = date_add(now(), interval 90 day)
+		     , a1.fir_login_chg_yn = if(a2.fir_login_chg_yn = 'N', 'Y', a2.fir_login_chg_yn)
+		     , a1.fir_login_dt =  if(a2.fir_login_chg_yn = 'N', now(), a2.fir_login_dt)
+		     , a1.user_pwd_3 = a2.user_pwd_2
+		     , a1.user_pwd_2 = a2.user_pwd_1
+		     , a1.user_pwd_1 = a2.user_pwd
+		     , a1.user_pwd = #{userPwd}
+		     , a1.work_ip = #{workIp}
+		 where a1.user_no = a2.user_no
+  	</update>
+
+	<!-- 사용자 pwd 변경 이력 update   -->
+	<!-- 비밀번호 변경 예정일을 90일 뒤로 연기  -->
+  	<update id="updateUserPwdChgDelay" parameterType="java.util.HashMap">
+		update tb_user_pwd a
+		   set
+		       a.upd_dt = now()
+			 , a.upd_no = #{updNo}
+		     , a.pwd_chg_dt = date_add(now(), interval 90 day)
+			 , a.work_ip = #{workIp}
+		 where a.user_no = (select user_no from tb_user
+		                      where user_id = #{userId}
+		                      <if test="compId != null">and comp_id = #{compId}</if>		                   
+		                    )
+  	</update>
+  	
+  	<!-- 사용자 id로 사용자 정보 전체 취득(참조용)  -->
+	<select id="selectUserAllById" parameterType="com.lgl.gms.webapi.sys.dto.request.UserRequest"
+		resultType="com.lgl.gms.webapi.sys.persistence.model.UserModel" >
+	  select
+		    user_no, user_id, user_nm, user_pwd,
+		    comp_id, bo_id, 
+		    user_typ, auth_cd,
+		    use_lang, cntry_cd,
+		    reg_dt, upd_dt, upd_no, reg_no,
+		    del_yn,
+		    work_ip, ref_token
+		    login_fail_cnt, lock_yn, lock_dt,
+		from
+		    tb_user
+		where
+		    user_id = #{userId}
+		  and del_yn = 'N'
+  	</select>
+
+
+  	
+</mapper>
+
+

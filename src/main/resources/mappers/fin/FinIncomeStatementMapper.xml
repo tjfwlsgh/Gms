@@ -1,0 +1,253 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+ 	@FileName    : FinIncomeStatementDao.java
+	@Date        : 2022.04.13
+ 	@Author      : jokim
+ 	@Description : 재무>손익계산서 DAO DB Query Mapper xml
+ 	@History     :
+ -->
+<!DOCTYPE mapper
+    PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+    "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="com.lgl.gms.webapi.fin.persistence.dao.FinIncomeStatementDao">
+  	
+  	<!--  재무 > 손익계산서 헤더정보 조회 -->
+  	<resultMap type="com.lgl.gms.webapi.fin.dto.response.FinIncomeStatementResponse" id="finPlBoInfoMap">
+        <id property="frmNm" column="frm_nm" />
+        <collection property="frmBos" resultMap="frmMap"></collection>
+    </resultMap>
+ 
+    <resultMap type="com.lgl.gms.webapi.fin.dto.response.FinIncomeStatementResponse$FrmBo" id="frmMap"> 
+        <result property="boId" column="bo_id" />
+        <result property="finValue" column="fin_value" />
+    </resultMap>
+    <!-- 재무 > 손익계산서 헤더정보 조회 -->
+  	<select id="selectFinBoPlInfoList" resultMap="finPlBoInfoMap" parameterType="com.lgl.gms.webapi.fin.dto.request.FinIncomeStatementRequest">
+		select t.*
+		  from (
+				select '계정과목' as frm_nm
+					,b.bo_id
+					,(select bo_nm from tb_bo t where t.bo_id = b.bo_id) as fin_value
+					,a.col_seq
+					,1 as seq
+				 from tb_frm_info_bo a, tb_bo_pl_info b
+				where a.frm_id = b.frm_id
+				 and b.cls_yymm = #{clsYymm}
+				 and a.bo_id = b.bo_id
+				
+				 union all
+				 
+				 select '통화' as frm_nm
+				 	,b.bo_id
+					,b.crncy_cd as fin_value
+					,a.col_seq
+					,2 as seq
+				 from tb_frm_info_bo a, tb_bo_pl_info b
+				where a.frm_id = b.frm_id
+				 and b.cls_yymm = #{clsYymm}
+				 and a.bo_id = b.bo_id
+				 
+			<if test="crncyType != null and crncyType == 'KRW'">
+				union all
+				 
+				 select '기말환율' as frm_nm
+				 	,b.bo_id
+					,b.bse_exchg_rate as fin_value
+					,a.col_seq
+					,3 as seq
+				 from tb_frm_info_bo a, tb_bo_pl_info b
+				where a.frm_id = b.frm_id
+				 and b.cls_yymm = #{clsYymm}
+				 and a.bo_id = b.bo_id
+			 </if>
+			 
+		  ) t
+		order by seq, col_seq
+  	</select>
+  	
+  	
+  	<!-- 제무 > 손익계산서 리스트 조회 -->
+	<select id="selectFinIncStatementList" resultType="java.util.Map" parameterType="com.lgl.gms.webapi.fin.dto.request.FinIncomeStatementRequest">
+		select a.frm_nm as frmNm
+			<if test="frmBoList != null and frmBoList.size() > 0">
+				,
+				<foreach collection="frmBoList" item="item" index="index" separator=" , ">
+				  max(if(b.bo_id = ${item.boId}, d.fin_amt, null)) as "${item.boId}"
+			    </foreach>
+			</if>
+
+		  from tb_frm_info_det a
+		  	left join tb_frm_info_bo b on a.frm_id = b.frm_id
+			inner join tb_bo_pl_info c on a.frm_id = b.frm_id and b.bo_id = c.bo_id
+		<if test="crncyType != null and crncyType == 'KRW'">
+			left join tb_bo_pl_det_krw d on c.pl_id = d.pl_id and a.row_seq = d.row_seq
+		</if>
+		<if test="crncyType != null and crncyType == 'LOC'">
+			left join tb_bo_pl_det_loc_crcy d on c.pl_id = d.pl_id and a.row_seq = d.row_seq
+		</if>
+		 where c.bo_id = b.bo_id 
+		   and c.frm_id = b.frm_id
+		   and a.row_seq = d.row_seq
+		   and c.pl_id = d.pl_id
+		   and a.frm_id = #{frmId}
+		   and c.cls_yymm = #{clsYymm}
+		  group by a.frm_id, a.row_seq
+		 order by a.row_seq, b.col_seq
+	 
+  	</select>
+  	
+  	<!--  재무 > 손익계산서 PL 정보 -->
+  	<select id="selectBoPlInfoList" resultType="com.lgl.gms.webapi.fin.dto.response.BoPlInfoResponse" parameterType="com.lgl.gms.webapi.fin.dto.request.FinIncomeStatementRequest">
+		select t1.pl_id
+			  ,t1.bo_id
+			  ,t1.frm_id
+			  ,t1.cls_yymm
+			  ,t1.crncy_cd
+			  ,t1.cls_bse_dt
+			  ,t1.bse_exchg_rate
+			  ,t1.reg_dt
+			  ,t1.work_ip
+			  ,t1.reg_no
+		from tb_bo_pl_info t1, tb_frm_info_bo t2
+	  where t1.frm_id = #{frmId}
+		and t1.cls_yymm = #{clsYymm}
+		and t1.frm_id = t2.frm_id 
+		and t1.bo_id = t2.bo_id
+  	</select>
+  	
+ 
+  	<!-- 법인 PL 정보 저장  -->
+  	<insert id="insertBoPlInfo" parameterType="java.util.Map">
+
+  		insert into tb_bo_pl_info (
+			 bo_id
+			,frm_id
+			,cls_yymm
+			,crncy_cd
+			,cls_bse_dt
+			,bse_exchg_rate
+			,work_ip
+			,reg_no
+		) 
+		values		
+		<foreach collection="plInfoList" item="item" index="index" separator=" , ">
+          ( 
+           	 #{item.boId}
+			,#{frmId}
+			,#{clsYymm}
+			,#{item.crncyCd}
+			,(select DATE_FORMAT(LAST_DAY(STR_TO_DATE(concat(#{clsYymm},'01'),'%Y%m%d')), '%Y%m%d'))
+			,#{item.bseExchgRate}
+			,#{item.workIp}
+			,#{item.regNo}
+		  )
+	   </foreach>
+
+  	</insert>
+  	
+  	<!-- 법인 PL 정보 Update -->
+  	<update id="updateBoPlInfo" parameterType="com.lgl.gms.webapi.fin.persistence.model.BoPlInfoModel">
+		
+		insert into tb_bo_pl_info (
+			pl_id
+			,bo_id
+			,frm_id
+			,cls_yymm
+			,crncy_cd
+			,cls_bse_dt
+			,bse_exchg_rate
+			,work_ip
+			,reg_no
+		) 
+		values (
+           (ifnull( 
+	          	(select t.pl_id from tb_bo_pl_info t 
+	          	  where t.frm_id = #{frmId}
+				   and t.cls_yymm = #{clsYymm}
+				   and t.bo_id = #{boId}
+	          	),
+	          	(select max(t1.pl_id)+1 from tb_bo_pl_info t1)
+          	  )
+          	)
+           	,#{boId}
+			,#{frmId}
+			,#{clsYymm}
+			,#{crncyCd}
+			,(select DATE_FORMAT(LAST_DAY(STR_TO_DATE(concat(#{clsYymm},'01'),'%Y%m%d')), '%Y%m%d'))
+			,#{bseExchgRate}
+			,#{workIp}
+			,#{regNo}
+		  )
+		ON DUPLICATE KEY UPDATE
+			reg_dt = now()
+			<if test="crncyCd !=null and crncyCd != ''">, crncy_cd = #{crncyCd}</if>
+			<if test="bseExchgRate !=null and bseExchgRate != ''">, bse_exchg_rate = #{bseExchgRate}</if>
+
+  	</update>
+  	
+  	<!-- 법인 PL 상세 원화 삭제 -->
+  	<delete  id="deleteBoPlDetKrw" parameterType="com.lgl.gms.webapi.fin.dto.request.FinIncomeStatementRequest">
+  		delete from tb_bo_pl_det_krw
+		 where pl_id in (
+						select pl_id from tb_bo_pl_info
+						 where frm_id = #{frmId}
+						  and cls_yymm = #{clsYymm}
+					  )
+  	</delete>
+  	
+  	<!-- 법인 PL 상세 외화 삭제 -->
+  	<delete  id="deleteBoPlDetLocCrcy" parameterType="com.lgl.gms.webapi.fin.dto.request.FinIncomeStatementRequest">
+  		delete from tb_bo_pl_det_loc_crcy
+		 where pl_id in (
+						select pl_id from tb_bo_pl_info
+						 where frm_id = #{frmId}
+						  and cls_yymm = #{clsYymm}
+					  )
+  	</delete>
+  	
+  	<!-- 법인 PL 상세 원화 저장  -->
+  	<insert  id="insertBoPlDetKrw" parameterType="java.util.List">
+  		insert into tb_bo_pl_det_krw
+			 ( 
+			  row_seq
+			  ,pl_id
+			  ,fin_amt
+			 )
+		 values
+		 	<foreach collection="list" item="item" index="index" separator=" , ">
+	          ( 
+			   #{item.rowSeq}
+			  ,#{item.plId}
+			  ,#{item.finAmt}				
+			 )
+		   </foreach>			 
+  		
+  	</insert>  	
+  	
+  	
+  	<!-- 법인 PL 상세 외화 저장  -->
+  	<insert  id="insertBoPlDetLocCrcy" parameterType="com.lgl.gms.webapi.fin.persistence.model.BoPlDetModel">
+  		insert into tb_bo_pl_det_loc_crcy
+			 ( 
+			  row_seq
+			  ,pl_id
+			  ,fin_amt
+			 )
+		 values
+		 
+			<foreach collection="list" item="item" index="index" separator=" , ">
+	          ( 
+			  	#{item.rowSeq}
+				,#{item.plId}
+				,#{item.finAmt}				
+			  )
+			</foreach>	
+		   
+  	</insert>  	 	
+  	
+  	
+  	
+</mapper>
+
+

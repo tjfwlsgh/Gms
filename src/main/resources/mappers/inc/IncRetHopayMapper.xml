@@ -1,0 +1,165 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+ 	@FileName    : IncRetHopayDao.java
+	@Date        	: 2022.03.14
+ 	@Author      : jokim
+ 	@Description : 손익 실적 본사지급 DAO DB Query Mapper xml
+ 	@History     :
+ -->
+<!DOCTYPE mapper
+    PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+    "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="com.lgl.gms.webapi.inc.persistence.dao.IncRetHopayDao">
+  	
+  	<!-- 손익 실적 본사지급 리스트 조회 -->
+	<select id="selectIncRetHopayList" resultType="com.lgl.gms.webapi.inc.dto.response.BoIncRetHopayResponse" parameterType="com.lgl.gms.webapi.inc.dto.request.BoIncRetRequest">
+	
+		select if(t.sub_bo_nm is null, bo_nm, concat(t.bo_nm, "/", t.sub_bo_nm)) bo_sub_nm
+			  ,t.pbo_id
+			  ,t.bo_id
+			  ,t.def_cl
+			  ,t.inc_yymm
+			  ,f_get_commcd_nm(t.trrt_id, #{locale}) trrt_nm
+			  ,max(if(t.inc_itm_id = 138 ,t.pt_amt, '')) as payment
+			  ,max(if(t.inc_itm_id = 139 ,t.pt_amt, '')) as rentAmt
+			  ,max(if(t.inc_itm_id = 140 ,t.pt_amt, '')) as tuition
+			  ,max(if(t.inc_itm_id = 141 ,t.pt_amt, '')) as etcAmt
+			  ,t.cls_yn
+			  ,sum(t.pt_amt) pt_sum
+		   from
+			    (
+			      select hopay.bo_id
+						,bo.pbo_id
+						,if(bo.pbo_id is null, fn_get_bo_nm(bo.bo_id, #{locale}), (select fn_get_bo_nm(bo2.bo_id, #{locale}) from tb_bo bo2 where bo2.bo_id = bo.pbo_id)) bo_nm
+						,if(bo.pbo_id is null, null, bo_nm) sub_bo_nm
+						,bo.trrt_id
+						,inc_yymm
+						,def_cl
+						,seq
+						,inc_itm_id
+						,inc_itm_det_id
+						,cl1_cd
+						,cl2_cd
+						,cl3_cd
+						,pt_amt
+						,cls_yn
+			 	from tb_bo_inc_ret_hopay hopay, tb_bo bo
+			   where inc_yymm = #{incYymm}
+			 	 and def_cl = #{defCl}
+			 	 and hopay.bo_id = bo.bo_id
+			 	 and bo.comp_id = #{compId}
+			) t   
+		group by t.inc_yymm, t.pbo_id, t.bo_id, t.def_cl, t.trrt_id, t.cls_yn
+  	</select>
+  	
+  	<!-- 법인 손익 실적 본사지급 추가  -->
+   	<insert id="insertIncRetHopay" parameterType="com.lgl.gms.webapi.inc.persistence.model.BoIncRetHopayModel">
+   		insert into tb_bo_inc_ret_hopay
+			  ( bo_id
+				, inc_yymm
+				, def_cl
+				, seq
+				, inc_itm_id
+				, typ_cd
+				, cl1_cd
+				, cl2_cd
+				, cl3_cd
+				, pt_amt
+				, cls_yn
+				, agg_yn
+				, inc_itm_det_id
+				, reg_no
+			  )
+			 values
+			 <foreach collection="array" item="item" index="index" separator=" , ">
+	           ( 
+	           	 #{item.boId}
+				 ,#{item.incYymm}
+				 ,#{item.defCl}
+				 ,#{index}+1
+				<!-- ,(select ifnull(max(b.seq),0)+1 from tb_bo_inc_ret_hopay b where b.bo_id=#{item.boId} and b.inc_yymm=#{item.incYymm} and b.def_cl=#{item.defCl}) -->
+				 ,#{item.incItmId}
+				 ,#{item.typCd}
+				 ,#{item.cl1Cd}
+				 ,#{item.cl2Cd}
+				 ,#{item.cl3Cd}
+				 ,ifnull(#{item.ptAmt}, 0)
+				 ,'N'
+				 ,'N'
+				 ,#{item.incItmDetId}
+				 ,#{item.regNo}
+				)
+			</foreach>
+  	</insert>
+  	
+  	<!-- 본사지급분 항목ID 조회 -->
+  	<select id="selectIncHopayItmId" resultType="com.lgl.gms.webapi.inc.dto.response.IncHopayItmInIdResponse">
+  	
+		select typ_cd_nm as typ_cd
+			, cl1_cd_nm cl1_cd
+			, cl3_cd_nm cl3_cd
+			, max(if( cl2_cd = '1' ,cl2_cd_nm, '')) as pay_itm_cl2
+			, max(if( cl2_cd = '2' ,cl2_cd_nm, '')) as rent_itm_cl2
+			, max(if( cl2_cd = '3' ,cl2_cd_nm, '')) as tuition_itm_cl2
+			, max(if( cl2_cd = '4' ,cl2_cd_nm, '')) as etc_itm_cl2
+			, max(if( cl2_cd = '1' ,inc_itm_id, '')) as pay_itm_id
+			, max(if( cl2_cd = '2' ,inc_itm_id, '')) as rent_itm_id
+			, max(if( cl2_cd = '3' ,inc_itm_id, '')) as tuition_itm_id
+			, max(if( cl2_cd = '4' ,inc_itm_id, '')) as etc_itm_id
+			, max(if( cl2_cd = '1' ,inc_itm_det_id, '')) as pay_itm_det_id
+			, max(if( cl2_cd = '2' ,inc_itm_det_id, '')) as rent_itm_det_id
+			, max(if( cl2_cd = '3' ,inc_itm_det_id, '')) as tuition_itm_det_id
+			, max(if( cl2_cd = '4' ,inc_itm_det_id, '')) as etc_itm_det_id
+		from vw_inc_itm_det
+	   where typ_cd = 3
+		 and del_yn  ='N'
+	   group by typ_cd_nm, cl1_cd_nm, cl3_cd_nm
+		
+  	</select>
+  	
+  	<!-- 수정 -->
+  	<update id="updateIncRetHopay" parameterType="com.lgl.gms.webapi.inc.persistence.model.BoIncRetHopayModel">
+  	  	
+		update tb_bo_inc_ret_hopay
+		<set>
+			upd_dt = now()
+			, upd_no = #{updNo}
+			<if test="ptAmt !=null and ptAmt != ''">, pt_amt = #{ptAmt}</if>
+		</set>
+		where bo_id = #{boId}
+		 	and inc_yymm 	= #{incYymm}
+			and def_cl 		= #{defCl}
+			and inc_itm_id 	= #{incItmId}
+			and inc_itm_det_id = #{incItmDetId}
+			
+	</update>
+	
+	<!-- 본사지급분 삭제 -->
+	<delete  id="deleteIncRetHopay" parameterType="com.lgl.gms.webapi.inc.dto.request.BoIncRetHopayRequest">
+	
+  		delete from tb_bo_inc_ret_hopay
+		 where bo_id = #{boId}
+		 	and inc_yymm 	= #{incYymm}
+			and def_cl 		= #{defCl}
+		
+  	</delete>
+  	
+  	
+  	<!-- 본사지급분 마감-->
+	<update id="updateIncRetHopayCls" parameterType="com.lgl.gms.webapi.inc.persistence.model.BoIncRetHopayModel">
+		update tb_bo_inc_ret_hopay
+			set upd_dt = now()
+				, upd_no = #{updNo}
+				, cls_yn='Y'
+		where bo_id = #{boId}
+		  and inc_yymm = #{incYymm}
+		  and def_cl = #{defCl}
+	</update>
+	
+	
+
+  	
+</mapper>
+
+

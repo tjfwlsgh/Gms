@@ -1,0 +1,70 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+ 	@FileName    : LoginLogMapper.java
+	@Date        :
+ 	@Author      :
+ 	@Description : DB Query Mapper xml
+ 	@History     :
+ -->
+<!DOCTYPE mapper
+    PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+    "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="com.lgl.gms.webapi.cmm.persistence.dao.LoginLogDao">
+
+  	<!-- 로그인로그 리스트 조회(n건)  -->
+	<select id="selectLoginLogList" parameterType="java.util.HashMap"
+			resultType="com.lgl.gms.webapi.sys.dto.response.AccessHistResponse" >
+		select a.log_id
+		    -- , a.dev_dt
+		     , date_format(date_add(a.dev_dt, interval b.std_var minute), '%Y%m%d%H%i%s') as dev_dt
+		     , a.log_typ
+		     , if(a.log_typ = 'I', 'Login', if(a.log_typ = 'O', 'Logout', '')) as log_typ_nm
+		     , a.login_id
+		     , (select user_nm from tb_user 
+		         where user_id = a.login_id and comp_id = #{compId} ) as login_nm
+		     , a.login_ip
+		     , a.err_yn
+		     , a.err_rsn
+		  from tb_login_log a
+		  left join tb_time_zone b 
+		  	   on (b.cntry_cd = 'KR')
+		 where 1 = 1 
+		   and (dev_dt between str_to_date(#{startDate},'%Y%m%d%H%i%s') 
+		                   and str_to_date(concat(#{endDate},'235959'),'%Y%m%d%H%i%s'))
+		 <if test="logTyp != null">and log_typ = #{logTyp}</if>
+		 order by log_id desc
+		 
+  	</select>
+  	
+   	<!-- 로그인로그 추가  -->
+   	<insert id="insertLoginLog" parameterType="com.lgl.gms.webapi.cmm.persistence.model.LoginLogModel">
+		insert into tb_login_log 
+		    ( dev_dt
+		    , log_typ
+		    , login_id
+		    , login_ip
+		    <if test="errYn != null"> , err_yn </if>
+		    <if test="errRsn != null">, err_rsn</if>
+		    )
+		values 
+		    ( now()
+		    , #{logTyp}
+		    , #{loginId}
+		    , #{loginIp}
+		    <if test="errYn != null">, #{errYn}</if>
+		    <if test="errRsn != null">, #{errRsn}</if>
+		    )
+		    
+		<selectKey resultType="Integer" keyProperty="logId" order="AFTER">
+       		SELECT LAST_INSERT_ID()
+   		</selectKey>
+
+  	</insert>
+
+
+
+  	
+</mapper>
+
+

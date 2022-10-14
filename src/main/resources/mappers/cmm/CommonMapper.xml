@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+ 	@FileName    : CommonDao.java
+	@Date        :
+ 	@Author      :
+ 	@Description : DB Query Mapper xml
+ 	@History     :
+ -->
+<!DOCTYPE mapper
+    PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+    "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+    
+<mapper namespace="com.lgl.gms.webapi.cmm.persistence.dao.CommonDao">
+	
+    
+    <!-- 최종환율년월(실적용) 조회  -->
+    <select id="getLastExchgRateYm" parameterType="com.lgl.gms.webapi.cmm.dto.request.CommonRequest" resultType="String" >
+    
+		select fn_get_last_exchg_rate_ym(#{yyyy}, #{crncyCd})
+		
+    </select>
+    
+
+
+</mapper>

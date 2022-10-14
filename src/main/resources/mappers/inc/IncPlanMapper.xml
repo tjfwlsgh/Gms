@@ -1,0 +1,211 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+ 	@FileName    : incPlanDao.java
+	@Date        	: 2022.02.21
+ 	@Author      : jokim
+ 	@Description : 법인 계획 공통(매출/비용) DAO DB Query Mapper xml
+ 	@History     :
+ -->
+<!DOCTYPE mapper
+    PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+    "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="com.lgl.gms.webapi.inc.persistence.dao.IncPlanDao">
+
+  	<!-- 법인 손익 계획 헤더정보 조회 -->
+	<select id="selectIncPlan" resultType="com.lgl.gms.webapi.inc.dto.response.BoIncPlanResponse" parameterType="com.lgl.gms.webapi.inc.dto.request.BoIncPlanRequest">
+		SELECT BO_ID
+				 , INC_YY
+				 , FINL_VER
+				 , PLN_CLS1
+				 , PLN_CLS2
+				 , PLN_CLS3
+				 , CRNCY_CD
+				 , CNTRY_CD
+				 , REG_DT
+				 , UPD_DT
+				 , WORK_IP
+				 , REG_NO
+				 , UPD_NO
+		FROM TB_BO_INC_PLN
+	  WHERE BO_ID = #{boId}
+		  AND INC_YY = #{incYy}
+  	</select>
+	
+	<!-- 법인 손익 계획 헤더 추가  -->
+   	<insert id="insertIncPlan" parameterType="com.lgl.gms.webapi.inc.persistence.model.BoIncPlnModel">
+   		insert into tb_bo_inc_pln
+				( bo_id
+				 , inc_yy
+				 , finl_ver
+				 , pln_cls1
+				 , pln_cls2
+				 , pln_cls3
+				 , crncy_cd
+				 , cntry_cd
+				 , reg_dt
+				 , upd_dt
+				 , work_ip
+				 , reg_no
+				 , upd_no
+			  )
+			values
+				(#{boId}
+				,#{incYy}
+				,1
+				,'N'
+				,'N'
+				,'N'
+				,(select crncy_cd from tb_bo where bo_id = #{boId})
+				,(select cntry_cd from tb_bo where bo_id = #{boId})
+				, NOW()
+				, NOW()
+				,#{workIp}
+				,#{regNo}
+				,#{updNo}
+			 )
+  	</insert>
+  	
+  	<!-- 법인 거래처 조회 -->
+	<select id="selectBoCustList" resultType="com.lgl.gms.webapi.inc.persistence.model.BoCustModel" parameterType="Integer">
+		select a.bo_id
+				, a.bo_cust_cd
+				, a.cust_nm
+				, a.cust_snm
+				, a.cust_nm_eng
+				, a.cust_snm_eng
+				, a.del_yn
+				, a.reg_dt
+				, a.upd_dt
+				, a.work_ip
+				, a.reg_no
+				, a.upd_no
+		from tb_bo_cust a
+	  where (a.bo_id = #{boId} or a.bo_id = (select PBO_ID from tb_bo b where b.bo_id=#{boId}))
+	  	 and del_yn = 'N'
+  	</select>
+  	
+  	
+  	<!--  엑셀업로드 용 공통코드 조회(그룹2, 그룹3)  -->
+  	<resultMap id="TccMap" type="com.lgl.gms.webapi.inc.dto.response.TccResponse">
+	  <id property="bseCd" column="BSE_CD" />
+	  <result property="tccId" column="TCC_ID"/>
+	  <collection property="tccVals" ofType="com.lgl.gms.webapi.inc.dto.response.TccValResponse">
+	    <result property="tccvId" column="TCCV_ID"/>	    
+	    <result property="stdCd" column="STD_CD"/>
+	    <result property="stdCdNm" column="STD_CD_NM"/>
+	    <result property="stdCdNmEng" column="STD_CD_NM_ENG"/>
+	  </collection>
+	</resultMap>
+	
+  	<select id="selectIncPlanTccList" resultMap="TccMap" >
+			select cc.bse_cd
+					, ccv.tccv_id
+					, ccv.tcc_id
+					, ccv.std_cd
+					, ccv.std_cd_nm
+					, ccv.std_cd_nm_eng
+					, ccv.cd_val
+				from tb_tcc cc
+					, tb_tcc_val ccv
+			  where cc.bse_cd in ('GRP01', 'GRP02', 'GRP03')
+			   and  cc.tcc_id = ccv.tcc_id 
+			   and cc.del_yn = 'N'
+			   and ccv.del_yn = 'N'
+			order by cc.bse_cd
+  	</select>
+  	
+  	<!-- 서비스유형 리스트 조회 -->
+  	<select id="selectIncSvcTypList" resultType="com.lgl.gms.webapi.inc.dto.response.SvcTypResponse" >
+		select svc.tccv_id
+				, svc.svc_typ
+				, svc.cl1_cd
+				, svc.svc_nm
+				, svc.svc_snm
+				, svc.svc_nm_eng
+				, svc.svc_snm_eng
+				, svc.view_seq
+				, cc.std_cd
+				, cc.std_cd_nm
+				, cc.std_cd_nm_eng
+				, cc.cd_val
+			from tb_svc_typ svc, tb_tcc_val cc
+		  where svc.del_yn = 'N'
+			 and cc.del_yn = 'N'
+			 and svc.tccv_id = cc.tccv_id
+  	</select>
+  	
+  	<!-- 손익 계획 마감실행 -->
+	<parameterMap type="com.lgl.gms.webapi.inc.dto.request.BoIncPlanRequest" id="incPlanClsProcMap" >
+		<parameter property="boId" 	jdbcType="VARCHAR" javaType="java.lang.Integer" mode="IN" />
+		<parameter property="incYy" jdbcType="VARCHAR" javaType="java.lang.String" mode="IN" />
+		<parameter property="pgmId" jdbcType="VARCHAR" javaType="java.lang.String" mode="IN" />
+		<parameter property="workIp" jdbcType="VARCHAR" javaType="java.lang.String" mode="IN" />
+		<parameter property="updNo" jdbcType="VARCHAR" javaType="java.lang.String" mode="IN" />
+		<parameter property="rtn" jdbcType="VARCHAR" javaType="java.lang.String" mode="OUT" />
+	</parameterMap>
+	<select  id="procIncCls" resultType="String" parameterMap="incPlanClsProcMap" statementType="CALLABLE">
+		<![CDATA[
+			{call sp_set_cls_mgmt(?, ?, ?, '01', 'Y', ?, ?, ?)}
+		]]>
+	</select>
+	
+		
+	<!-- 손익계획 버전 update -->
+	<update id="updateIncPlanFinlVer" parameterType="com.lgl.gms.webapi.inc.persistence.model.BoIncPlnModel">
+		update tb_bo_inc_pln a
+			set a.upd_dt = now()
+				, a.upd_no = #{updNo}
+				, a.finl_ver=(select ver from (select (ifnull(max(b.finl_ver),0)+1) ver from tb_bo_inc_pln b  where b.bo_id=#{boId} and b.inc_yy=#{incYy}) as t)
+		where a.bo_id = #{boId}
+			and a.inc_yy = #{incYy}
+	</update>
+  	
+  	
+  	<!-- 손익 계획 히스토리 저장 -->
+	<parameterMap type="com.lgl.gms.webapi.inc.dto.request.BoIncPlanRequest" id="incPlanHistProcMap" >
+		<parameter property="boId" 	jdbcType="VARCHAR" javaType="java.lang.Integer" mode="IN" />
+		<parameter property="incYy" jdbcType="VARCHAR" javaType="java.lang.String" mode="IN" />
+		<parameter property="taskNm" jdbcType="VARCHAR" javaType="java.lang.String" mode="IN" />
+		<parameter property="rtn" jdbcType="VARCHAR" javaType="java.lang.String" mode="OUT" />
+	</parameterMap>
+	<select  id="procIncHist" resultType="String" parameterMap="incPlanHistProcMap" statementType="CALLABLE">
+		<![CDATA[
+			{call sp_crt_inc_pln_hst(?, ?, ?, ?)}
+		]]>
+	</select>
+		
+	<!-- 손익 계획 집계 프로시저 호출 -->
+	<parameterMap type="com.lgl.gms.webapi.inc.dto.request.BoIncPlanRequest" id="incAggProcMap" >
+		<parameter property="boId" 	jdbcType="VARCHAR" javaType="java.lang.Integer" mode="IN" />
+		<parameter property="incYy" jdbcType="VARCHAR" javaType="java.lang.String" mode="IN" />
+		<parameter property="taskNm" jdbcType="VARCHAR" javaType="java.lang.String" mode="IN" />
+		<parameter property="workIp" jdbcType="VARCHAR" javaType="java.lang.String" mode="IN" />
+		<parameter property="updNo" jdbcType="VARCHAR" javaType="java.lang.String" mode="IN" />
+		<parameter property="rtn" jdbcType="VARCHAR" javaType="java.lang.String" mode="OUT" />
+	</parameterMap>
+	<select  id="procIncUpdAggProc" resultType="String" parameterMap="incAggProcMap" statementType="CALLABLE">
+		<![CDATA[
+			{call sp_upd_inc_agg_proc(?, ?, ?, null, ?, ?, ?)}
+		]]>
+	</select>
+	
+	<!-- 손익 마감프로시저 초기화(데이터 저장 시에 마감테이블에 추가) -->
+	<parameterMap type="com.lgl.gms.webapi.inc.dto.request.BoIncPlanRequest" id="incPlnClsIntProcMap" >
+		<parameter property="boId" 	jdbcType="VARCHAR" javaType="java.lang.Integer" mode="IN" />
+		<parameter property="incYy" jdbcType="VARCHAR" javaType="java.lang.String" mode="IN" />
+		<parameter property="taskNm" jdbcType="VARCHAR" javaType="java.lang.String" mode="IN" />
+		<parameter property="defCl" jdbcType="VARCHAR" javaType="java.lang.String" mode="IN" />
+		<parameter property="workIp" jdbcType="VARCHAR" javaType="java.lang.String" mode="IN" />
+		<parameter property="updNo" jdbcType="VARCHAR" javaType="java.lang.String" mode="IN" />
+		<parameter property="rtn" jdbcType="VARCHAR" javaType="java.lang.String" mode="OUT" />
+	</parameterMap>
+	<select  id="procIncPlnClsInt" resultType="String" parameterMap="incPlnClsIntProcMap" statementType="CALLABLE">
+		<![CDATA[
+			{call sp_int_cls_mgmt(?, ?, ?, ?, ?, ?, ?)}
+		]]>
+	</select>
+
+</mapper>
+
+

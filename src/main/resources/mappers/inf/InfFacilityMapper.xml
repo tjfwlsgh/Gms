@@ -1,0 +1,215 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+ 	@FileName    : InfFacilityMapper.xml
+	@Date        : 22.02.21
+ 	@Author      : hj.Chung
+ 	@Description : DB Query Mapper xml
+ 	@History     :
+ -->
+<!DOCTYPE mapper
+    PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+    "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+    
+<mapper namespace="com.lgl.gms.webapi.inf.persistence.dao.InfFacilityMgmtDao">
+	
+	<!-- 법인시설현황관리 리스트 조회 -->
+	<select id="selectInfraFacilityMgmtList" resultType="com.lgl.gms.webapi.inf.dto.response.InfFacilityMgmtResponse"
+											 parameterType="com.lgl.gms.webapi.inf.dto.request.InfFacilityMgmtRequest"> 
+		select a.bo_rnt_id
+		     , if(b.bo_cl = 'H', a.bo_id, b.pbo_id) bo_id
+		     , if(b.bo_cl = 'B', a.bo_id, 0) sub_bo_id
+		     , if(b.bo_cl = 'H'
+		     		, if(#{locale} = 'ko', b.bo_nm, b.bo_nm_eng)
+		     		, (select if(#{locale} = 'ko', t.bo_nm, t.bo_nm_eng)  
+		     		   from tb_bo t 
+		     		   where b.pbo_id = t.bo_id)) bo_nm_h		
+		     , if(b.bo_cl = 'B', if(#{locale} = 'ko', b.bo_nm, b.bo_nm_eng), '') sub_bo_nm
+		     , b.bo_nm
+		     , a.office
+		     , a.rnt_typ_id
+		     , a.loc_cl_id
+		     , a.rnt_cl_id
+		     , f_get_commcd_nm(a.rnt_typ_id, #{locale}) rnt_typ_nm
+		     , f_get_commcd_nm(a.loc_cl_id, #{locale}) loc_cl_nm
+		     , f_get_commcd_nm(a.rnt_cl_id, #{locale}) rnt_cl_nm
+		     , a.loc_nm
+		     , a.qty
+		     , a.unit
+		     , a.rnt_prd
+		     , fn_edit_timestampdiff('month', a.cont_std, a.cont_etd) as cont_prd
+		     , a.cont_std
+		     , a.cont_etd
+			 , a.addr
+			 , a.pnlty_note
+			 , a.crncy_cd
+			 , a.hre
+			 , a.hre_prd
+			 , a.dpam_end_yn
+			 , a.note
+			 , a.del_yn
+			 , a.reg_dt
+			 , a.upd_dt
+			 , a.work_ip
+			 , a.reg_no
+			 , a.upd_no
+			 , b.bo_cl
+			 , a.dpst
+			 , round(fn_edit_convert_unit(a.unit, 'py', a.qty), 2) as untar
+		from tb_infra_rnt a
+	    join tb_bo b on (a.bo_id = b.bo_id)
+		where b.comp_id = #{compId}
+			  and a.rnt_typ_id = #{rntTypId}
+			  and ifnull(a.del_yn, 'N') != 'Y'
+		  <if test="boId != null and boId != ''">
+			  <if test="subBoId != null and subBoId != ''">and a.bo_id = #{subBoId}</if>
+			  <if test="subBoId == null or subBoId == ''">and (a.bo_id = #{boId} or a.bo_id in (select bo_id from tb_bo b 
+			  																				where b.pbo_id = #{boId}))
+		  </if>
+		</if>
+	      <if test="locClId!=null and locClId !=''">and a.loc_cl_id = #{locClId}</if>
+	      <if test="rntClId!=null and rntClId !=''">and a.rnt_cl_id = #{rntClId}</if>
+		order by ifnull(b.pbo_id, b.bo_id), b.bo_id, a.office, a.loc_cl_id, loc_cl_nm, rnt_cl_nm
+	</select> 
+	
+	<!-- 법인시설현황관리 정보 가져오기 -->
+	<select id="selectInfraFacilityByRntId" resultType="com.lgl.gms.webapi.inf.dto.response.InfFacilityMgmtResponse" parameterType="com.lgl.gms.webapi.inf.dto.request.InfFacilityMgmtRequest"> 
+		select a.bo_rnt_id
+		     , if(b.bo_cl = 'H', a.bo_id, b.pbo_id) bo_id
+		     , if(b.bo_cl = 'B', a.bo_id, 0) sub_bo_id
+		     , if(b.bo_cl = 'H'
+		     		, if(#{locale} = 'ko', b.bo_nm, b.bo_nm_eng)
+		     		, (select if(#{locale} = 'ko', t.bo_nm, t.bo_nm_eng)  
+		     		   from tb_bo t 
+		     		   where b.pbo_id = t.bo_id)) bo_nm_h		
+		     , if(b.bo_cl = 'B', if(#{locale} = 'ko', b.bo_nm, b.bo_nm_eng), '') sub_bo_nm
+		     , b.bo_nm
+		     , a.office
+		     , a.rnt_typ_id
+		     , a.loc_cl_id
+		     , a.rnt_cl_id
+		     , f_get_commcd_nm(a.rnt_typ_id, #{locale}) rnt_typ_nm
+		     , f_get_commcd_nm(a.loc_cl_id, #{locale}) loc_cl_nm
+		     , f_get_commcd_nm(a.rnt_cl_id, #{locale}) rnt_cl_nm
+		     , a.loc_nm
+		     , a.qty
+		     , a.unit
+		     , a.rnt_prd
+		     , fn_edit_timestampdiff('month', a.cont_std, a.cont_etd) as cont_prd
+		     , a.cont_std
+		     , a.cont_etd
+			 , a.addr
+			 , a.pnlty_note
+			 , a.crncy_cd
+			 , a.hre
+			 , a.hre_prd
+			 , a.dpam_end_yn
+			 , a.note
+			 , a.del_yn
+			 , a.reg_dt
+			 , a.upd_dt
+			 , a.work_ip
+			 , a.reg_no
+			 , a.upd_no
+			 , b.bo_cl
+		     , b.pbo_id
+		     , round(fn_edit_convert_unit(a.unit, 'py', a.qty), 2) as untar
+		from tb_infra_rnt a
+	    join tb_bo b on (a.bo_id = b.bo_id)
+		where b.comp_id = #{compId}
+			  and bo_rnt_id = #{boRntId}  
+			  and del_yn !='Y'
+		  <if test="subBoId!=null and subBoId!=''">and a.bo_id = #{subBoId}</if>
+		  <if test="subBoId==null or subBoId==''">and (a.bo_id = #{boId} or a.bo_id in (select bo_id from tb_bo b 
+		  																				where b.pbo_id = #{boId}))
+		  </if>
+		order by ifnull(b.pbo_id, b.bo_id), b.bo_id, a.office, a.loc_cl_id, loc_cl_nm, rnt_cl_nm
+	</select> 
+	
+	<!-- 법인시설현황관리 row 삭제 -->
+	<update id="deleteFacilityMgmt" parameterType="java.util.HashMap">
+	 	update tb_infra_rnt 
+	 	set del_yn = 'Y'
+	 	  , upd_dt = now()
+	 	  , upd_no = #{updNo}
+	 	  , work_ip = #{workIp} 
+	 	where bo_rnt_id = #{boRntId}
+	</update>
+	
+	<!-- 법인시설현황관리 row 추가 -->
+	<insert id="insertFacilityMgmt" parameterType="com.lgl.gms.webapi.inf.persistence.model.InfraRntModel">
+		insert into tb_infra_rnt
+			  (
+			     bo_id
+			   , office
+			   , rnt_typ_id, loc_cl_id
+			   , rnt_cl_id
+			   , loc_nm
+			   , qty
+			   , unit
+			   , rnt_prd
+			   , cont_std, cont_etd
+			   , pnlty_note
+			   , crncy_cd
+			   , hre, hre_prd
+			   , dpam_end_yn
+			   , addr
+			   , note
+			   , del_yn
+			   , dpst
+			   , work_ip, reg_no, reg_dt
+			   )
+		values(
+				 #{boId}
+			   , #{office}
+			   , #{rntTypId}, #{locClId}
+			   , #{rntClId}
+			   , #{locNm}
+			   , #{qty}
+			   , #{unit}
+			   , #{rntPrd}
+			   , #{contStd}, #{contEtd}
+			   , #{pnltyNote}
+			   , #{crncyCd}
+			   , #{hre}, #{hrePrd}
+			   , #{dpamEndYn}
+			   , #{addr}
+			   , #{note}
+			   , 'N'
+			   , #{dpst}
+			   , #{workIp}, #{regNo}, #{regDt}
+			   ) 
+	</insert> 
+	
+	<!-- 법인시설현황관리 row 수정 -->
+	<update id="updateFacilityMgmt" parameterType="com.lgl.gms.webapi.inf.persistence.model.InfraRntModel">
+		update tb_infra_rnt
+		<set>
+			upd_dt = now()
+			, upd_no = #{updNo}
+			, work_ip = #{workIp}
+			, office = #{office}
+			, addr = #{addr}
+			, dpst = #{dpst}
+			, note = #{note}
+			, loc_nm = #{locNm}
+			<if test="boId!=null and boId != ''">, bo_id=#{boId}</if>
+			<if test="subBoId!=null and subBoId != ''">, bo_id=#{subBoId}</if>
+			<if test="rntTypId!=null and rntTypId !=''">, rnt_typ_id = #{rntTypId}</if>
+			<if test="locClId!=null and locClId!=''">, loc_cl_id = #{locClId}</if>
+			<if test="rntClId!=null and rntClId!=''">, rnt_cl_id = #{rntClId}</if>
+			<if test="qty!=null and qty!=''">, qty = #{qty}</if>
+			<if test="unit!=null and unit!=''">, unit = #{unit}</if>
+			<if test="rntPrd!=null and rntPrd!=''">, rnt_prd = #{rntPrd}</if>
+			<if test="contStd!=null and contStd!=''">, cont_std = #{contStd}</if>
+			<if test="contEtd!=null and contEtd!=''">, cont_etd = #{contEtd}</if>
+			<if test="pnltyNote!=null and pnltyNote!=''">, pnlty_note = #{pnltyNote}</if>
+			<if test="crncyCd!=null and crncyCd!=''">, crncy_cd = #{crncyCd}</if>
+			<if test="hre!=null and hre!=''">, hre = #{hre}</if>
+			<if test="hrePrd!=null and hrePrd!=''">, hre_prd = #{hrePrd}</if>
+			<if test="dpamEndYn!=null and dpamEndYn!=''">, dpam_end_yn = #{dpamEndYn}</if>
+		</set>
+		where bo_rnt_id = #{boRntId}
+	</update>
+	
+
+</mapper>

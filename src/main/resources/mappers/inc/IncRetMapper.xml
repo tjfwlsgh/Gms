@@ -1,0 +1,118 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+ 	@FileName    : IncRetDao.java
+	@Date        	: 2022.03.10
+ 	@Author      : jokim
+ 	@Description : 법인 실적 공통(매출/비용) DAO DB Query Mapper xml
+ 	@History     :
+ -->
+<!DOCTYPE mapper
+    PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+    "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="com.lgl.gms.webapi.inc.persistence.dao.IncRetDao">
+
+  	<!-- 법인 손익 실적 헤더정보 조회 -->
+	<select id="selectIncRet" resultType="com.lgl.gms.webapi.inc.dto.response.BoIncRetResponse" parameterType="com.lgl.gms.webapi.inc.dto.request.BoIncRetRequest">
+		select bo_id
+			 , inc_yymm
+			 , def_cl
+			 , ret_cls1
+			 , ret_cls2
+			 , ret_cls3
+			 , crncy_cd
+			 , cntry_cd
+			 , ret_std
+			 , ret_etd
+			 , reg_dt
+			 , upd_dt
+			 , work_ip
+			 , reg_no
+			 , upd_no				 
+		from tb_bo_inc_ret
+	  where  bo_id = #{boId}
+		 and inc_yymm = #{incYymm}
+		 and def_cl = #{defCl}
+  	</select>
+	
+	<!-- 법인 손익 실적 헤더 추가  -->
+   	<insert id="insertIncRet" parameterType="com.lgl.gms.webapi.inc.persistence.model.BoIncRetModel">
+   		insert into tb_bo_inc_ret
+				( bo_id
+				 , inc_yymm
+				 , def_cl
+				 , ret_cls1
+				 , ret_cls2
+				 , ret_cls3
+				 , crncy_cd
+				 , cntry_cd
+				 , reg_dt
+				 , work_ip
+				 , reg_no
+			  )
+			values
+				(#{boId}
+				,#{incYymm}
+				,#{defCl}
+				,'N'
+				,'N'
+				,'N'
+				,(select crncy_cd from tb_bo where bo_id = #{boId})
+				,(select cntry_cd from tb_bo where bo_id = #{boId})
+				, NOW()
+				,#{workIp}
+				,#{regNo}
+			 )
+  	</insert>
+  	
+  	<!-- 손익 실적 마감실행 -->
+	<parameterMap type="com.lgl.gms.webapi.inc.dto.request.BoIncRetRequest" id="incRetClsProcMap" >
+		<parameter property="boId" 	jdbcType="VARCHAR" javaType="java.lang.Integer" mode="IN" />
+		<parameter property="incYymm" jdbcType="VARCHAR" javaType="java.lang.String" mode="IN" />
+		<parameter property="pgmId" jdbcType="VARCHAR" javaType="java.lang.String" mode="IN" />
+		<parameter property="defCl" jdbcType="VARCHAR" javaType="java.lang.String" mode="IN" />		
+		<parameter property="workIp" jdbcType="VARCHAR" javaType="java.lang.String" mode="IN" />
+		<parameter property="updNo" jdbcType="VARCHAR" javaType="java.lang.String" mode="IN" />
+		<parameter property="rtn" jdbcType="VARCHAR" javaType="java.lang.String" mode="OUT" />
+	</parameterMap>
+	<select  id="procIncRetCls" resultType="String" parameterMap="incRetClsProcMap" statementType="CALLABLE">
+		<![CDATA[
+			{call sp_set_cls_mgmt(?, ?, ?, ?, 'Y', ?, ?, ?)}
+		]]>
+	</select>
+	
+	<!-- 손익 계획 집계 프로시저 호출 -->
+	<parameterMap type="com.lgl.gms.webapi.inc.dto.request.BoIncRetRequest" id="incAggProcMap" >
+		<parameter property="boId" 	jdbcType="VARCHAR" javaType="java.lang.Integer" mode="IN" />
+		<parameter property="incYymm" jdbcType="VARCHAR" javaType="java.lang.String" mode="IN" />
+		<parameter property="jobCl" jdbcType="VARCHAR" javaType="java.lang.String" mode="IN" />
+		<parameter property="defCl" jdbcType="VARCHAR" javaType="java.lang.String" mode="IN" />
+		<parameter property="workIp" jdbcType="VARCHAR" javaType="java.lang.String" mode="IN" />
+		<parameter property="updNo" jdbcType="VARCHAR" javaType="java.lang.String" mode="IN" />
+		<parameter property="rtn" jdbcType="VARCHAR" javaType="java.lang.String" mode="OUT" />
+	</parameterMap>
+	<select  id="procIncUpdAggRet" resultType="String" parameterMap="incAggProcMap" statementType="CALLABLE">
+		<![CDATA[
+			{call sp_upd_inc_agg_proc(?, ?, ?, ?, ?, ?, ?)}
+		]]>
+	</select>	
+	
+	<!-- 손익 마감프로시저 초기화(데이터 저장 시에 마감테이블에 추가) -->
+	<parameterMap type="com.lgl.gms.webapi.inc.dto.request.BoIncRetRequest" id="incRetClsIntProcMap" >
+		<parameter property="boId" 	jdbcType="VARCHAR" javaType="java.lang.Integer" mode="IN" />
+		<parameter property="incYy" jdbcType="VARCHAR" javaType="java.lang.String" mode="IN" />
+		<parameter property="taskNm" jdbcType="VARCHAR" javaType="java.lang.String" mode="IN" />
+		<parameter property="defCl" jdbcType="VARCHAR" javaType="java.lang.String" mode="IN" />
+		<parameter property="workIp" jdbcType="VARCHAR" javaType="java.lang.String" mode="IN" />
+		<parameter property="updNo" jdbcType="VARCHAR" javaType="java.lang.String" mode="IN" />
+		<parameter property="rtn" jdbcType="VARCHAR" javaType="java.lang.String" mode="OUT" />
+	</parameterMap>
+	<select  id="procIncRetClsInt" resultType="String" parameterMap="incRetClsIntProcMap" statementType="CALLABLE">
+		<![CDATA[
+			{call sp_int_cls_mgmt(?, ?, ?, ?, ?, ?, ?)}
+		]]>
+	</select>
+
+</mapper>
+
+

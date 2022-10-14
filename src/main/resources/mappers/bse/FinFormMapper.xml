@@ -1,0 +1,152 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+ 	@FileName    : FinFormMapper.xml
+	@Date        : 2022.05.09
+ 	@Author      : jinok
+ 	@Description : DB Query Mapper xml
+ 	@History     : 재무양식관리 Mapper
+ -->
+<!DOCTYPE mapper
+    PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+    "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+    
+<mapper namespace="com.lgl.gms.webapi.bse.persistence.dao.FinFormDao">
+
+	<!-- 재무양식정보 조회 -->
+	<select id="selectFrmInfoList" resultType="com.lgl.gms.webapi.bse.dto.response.FinFormInfoResponse"  parameterType="com.lgl.gms.webapi.bse.dto.request.FinFormRequest"> 
+		select frm_id
+			 ,frm_cd_id
+			 ,comp_id
+			 ,frm_nm
+			 ,frm_nm_eng
+			 ,use_yn
+			 ,reg_dt
+			 ,upd_dt
+			 ,work_ip
+			 ,reg_no
+			 ,upd_no
+			 ,frm_typ
+			 ,f_get_commcd_nm(frm_typ, #{locale}) as frm_typ_nm
+		from tb_frm_info
+		where comp_id = #{compId}
+		<if test="useYn != null and useYn != ''">and use_yn = #{useYn}</if>
+		<if test="frmTyp != null and frmTyp != ''">and frm_typ = #{frmTyp}</if>
+		<if test="frmNm != null and frmNm != ''">
+		   and (frm_nm like concat('%',#{frmNm},'%') or frm_nm_eng like concat('%',#{frmNm},'%'))
+		</if>
+		order by frm_id
+	</select>
+	
+	<!-- 재무양식정보 상세 조회 -->
+	<select id="selectFrmInfoDetList" resultType="com.lgl.gms.webapi.bse.dto.response.FinFormInfoDetResponse"  parameterType="com.lgl.gms.webapi.bse.dto.request.FinFormRequest"> 
+		select frm_id
+			 ,row_seq
+			 ,frm_nm
+			 ,frm_nm_eng
+			 ,lv_cl
+			 ,acc_id
+		from tb_frm_info_det
+		where frm_id = #{frmId}
+	</select>
+	
+	<!-- 재무양식정보 추가 -->
+	<insert id="insertFrmInfo" useGeneratedKeys="true" keyProperty="frmId" parameterType="com.lgl.gms.webapi.bse.persistence.model.FrmInfoModel">
+		insert into tb_frm_info
+			(
+				frm_cd_id
+				,comp_id
+				,frm_nm
+				,frm_nm_eng
+				,frm_typ
+				,use_yn
+				,work_ip
+				,reg_no			
+			)
+		values 
+			(
+				#{frmCdId}
+		  		,#{compId}
+		  		,#{frmNm}		  		
+		  		,#{frmNmEng}
+		  		,#{frmTyp}
+		  		,ifnull(#{useYn}, 'Y')
+		  		,#{workIp}
+		  		,#{regNo}
+		  	)
+	</insert>
+	
+	
+	<!-- 재무양식 수정 -->
+	<update id="updateFrmInfo" parameterType="com.lgl.gms.webapi.bse.persistence.model.FrmInfoModel">
+	
+		update tb_frm_info
+		<set>
+			upd_dt = now()
+			,upd_no = #{updNo}
+			<if test="frmNm !=null and frmNm != ''">, frm_nm = #{frmNm}</if>
+			<if test="frmNmEng !=null and frmNmEng != ''">, frm_nm_eng = #{frmNmEng}</if>
+			<if test="useYn !=null and useYn != ''">, use_yn = #{useYn}</if>
+		</set>
+		where frm_id = #{frmId}
+		
+	</update>
+	
+	
+	<!-- 재무양식 정보 상세 삭제 -->
+  	<delete  id="deleteFrmInfoDetList" parameterType="com.lgl.gms.webapi.bse.dto.request.FinFormRequest">
+  		delete from tb_frm_info_det
+		where frm_id = #{frmId} 
+  	</delete>
+  	
+	
+	<!-- 재무양식 정보 상세 추가  -->
+   	<insert id="insertFrmInfoDetList" parameterType="HashMap">
+   		insert into tb_frm_info_det
+			 ( frm_id
+			  ,row_seq
+			  ,frm_nm
+			  ,frm_nm_eng
+			  ,lv_cl
+			  ,acc_id
+			 )
+			values
+	        <foreach collection="list" item="item" index="index" separator=" , ">
+	           ( 
+	           	 #{frmId}
+				 ,#{item.rowSeq}
+				 ,#{item.frmNm}
+				 ,#{item.frmNmEng}
+				 ,#{item.lvCl}
+				 ,#{item.accId}
+				)
+	        </foreach>
+
+  	</insert>
+  	
+  	<!-- 계정 관리 조회 -->
+	<select id="selectAccMgmtList" resultType="com.lgl.gms.webapi.bse.dto.response.AccMgmtResponse"  parameterType="com.lgl.gms.webapi.bse.dto.request.FinFormRequest"> 
+		select acc_id
+			 ,comp_id
+			 ,acc_cd
+			 ,acc_grp_cd
+			 ,if(#{locale} = 'ko', acc_cd_nm, acc_cd_nm_eng) as acc_cd_nm
+			 ,concat(acc_cd, '(', if(#{locale} = 'ko', acc_cd_nm, acc_cd_nm_eng), ')') as acc_str
+			 ,acc_cd_nm as acc_cd_nm_kr
+			 ,acc_cd_nm_eng
+			 ,acc_clss_cd
+			 ,lv_cl
+			 ,use_yn
+			 ,reg_dt
+			 ,upd_dt
+			 ,work_ip
+			 ,reg_no
+			 ,upd_no
+			 ,acc_itm_nm
+		from tb_acc_mgmt
+		where comp_id = #{compId}
+		 and acc_grp_cd = #{frmCd}
+		 and use_yn = 'Y'
+	</select>
+	
+
+</mapper>

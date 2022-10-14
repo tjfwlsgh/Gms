@@ -1,0 +1,335 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+ 	@FileName    : IncDataInqDao.java
+	@Date        : 2022.04.06
+ 	@Author      : jokim
+ 	@Description : 손익데이터 조회 DAO DB Query Mapper xml
+ 	@History     :
+ -->
+<!DOCTYPE mapper
+    PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+    "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="com.lgl.gms.webapi.inc.persistence.dao.IncDataInqDao">
+
+  	
+  	<!-- 손익데이터 리스트 조회 -->
+	<select id="selectIncDataInqList" resultType="com.lgl.gms.webapi.inc.dto.response.BoIncDataInqResponse" parameterType="com.lgl.gms.webapi.inc.dto.request.BoIncDataInqRequest">
+	  	 
+	  select t.*
+			,if(#{untDp}='10', t.sal_amt1, ROUND(t.sal_amt1 * if(t.crncy_cd='KRW', 1, c.cur_exchg_rate)/unt, 2)) as sal_amt
+			,if(#{untDp}='10', t.sal_cst1, ROUND(t.sal_cst1 * if(t.crncy_cd='KRW', 1, c.cur_exchg_rate)/unt, 2)) as sal_cst
+			,if(#{untDp}='10', t.seae_amt1, ROUND(t.seae_amt1 * if(t.crncy_cd='KRW', 1, c.cur_exchg_rate)/unt, 2)) as seae_amt
+			,if(#{untDp}='10', t.lbr_cost1, ROUND(t.lbr_cost1 * if(t.crncy_cd='KRW', 1, c.cur_exchg_rate)/unt, 2)) as lbr_cost
+			,if(#{untDp}='10', t.exp_amt1, ROUND(t.exp_amt1 * if(t.crncy_cd='KRW', 1, c.cur_exchg_rate)/unt, 2)) as exp_amt
+			,if(#{untDp}='10', t.ifo_amt1, ROUND(t.ifo_amt1 * if(t.crncy_cd='KRW', 1, c.cur_exchg_rate)/unt, 2)) as ifo_amt
+			
+			,if(#{untDp}='10', t.rvn_exp_amt1, ROUND(t.rvn_exp_amt1 * if(t.crncy_cd='KRW', 1, c.cur_exchg_rate)/unt, 2)) as rvn_exp_amt
+			
+			,if(#{untDp}='10', t.pt_amt1, ROUND(t.pt_amt1 * if(t.crncy_cd='KRW', 1, c.cur_exchg_rate)/unt, 2)) as pt_amt
+			
+		  from (
+		  
+		   <if test="searchSalYn != null and searchSalYn == 'Y'.toString()">
+		   -- 매출실적
+			select if(bo.bo_cl = 'H', bo.bo_id, bo.pbo_id) as bo_id
+				,if(bo.bo_cl = 'H', bo.bo_nm, (select bo_nm from tb_bo t where bo.pbo_id = t.bo_id)) as bo_nm
+				,if(bo.bo_cl = 'B', bo.bo_id, '') as sub_bo_id
+				,if(bo.bo_cl = 'B', bo.bo_nm, '') as sub_bo_nm
+				,sal.inc_yymm
+				,bo.crncy_cd
+				,F_GET_COMMCD_NM(1000015, #{locale}) inc10_nm
+				,'' as cl1_cd
+				,'' as cl2_cd
+				,'' as cl3_cd
+				
+				,sal.cust_nm
+				,sal.grp1_cd
+				,sal.grp2_cd
+				,sal.grp3_cd
+				,sal.svc_typ
+				,sal.biz_cl_cd
+				,sal.biz_obj_cd
+						
+				,sal.sal_amt as sal_amt1
+				,sal.sal_cst as sal_cst1
+				,sal.seae_amt as seae_amt1
+				,sal.lbr_cost as lbr_cost1
+				,sal.exp_amt as exp_amt1
+				,sal.ifo_amt as ifo_amt1
+				
+				,null as rvn_exp_amt1  -- 비용금액
+				,null as pt_amt1 -- 지급금액
+				
+				,sal.fr_area
+				,sal.fr_sbu_area
+				,sal.to_sbu_area
+				,(select CAST(cd_val AS SIGNED) from tb_tcc_val t1, tb_tcc t2 where t2.BSE_CD = 'UNTDP' and t1.tcc_id = t2.tcc_id and t1.STD_CD = #{untDp}) unt
+			  from tb_bo_inc_ret_sal sal
+			  	  ,tb_bo bo
+			  	  
+			 where sal.bo_id = bo.bo_id
+			  <if test="boIds != null and boIds.size() > 0">
+               and (
+               <foreach collection="boIds" item="boId" separator="or">
+               		sal.bo_id in (                  
+                       select t2.bo_id from tb_bo t2
+						where (t2.bo_id = #{boId} or t2.pbo_id = #{boId})
+					)
+               </foreach>
+                   )
+		      </if>
+		      
+			  <if test="grp01s != null and grp01s.size() > 0">
+				and sal.grp1_cd in
+	                <foreach collection="grp01s" item="item" open="(" close=")" separator=",">
+	                   #{item}
+	                </foreach>
+			  </if>
+			  
+			  <if test="grp02s != null and grp02s.size() > 0">
+				and sal.grp2_cd in
+	                <foreach collection="grp02s" item="item" open="(" close=")" separator=",">
+	                   #{item}
+	                </foreach>
+			  </if>
+			  
+			  <if test="grp03s != null and grp03s.size() > 0">
+				and sal.grp3_cd in
+	                <foreach collection="grp03s" item="item" open="(" close=")" separator=",">
+	                   #{item}
+	                </foreach>
+			  </if>
+			  
+			  <if test="svcTpys != null and svcTpys.size() > 0">
+				and sal.svc_typ in
+	                <foreach collection="svcTpys" item="item" open="(" close=")" separator=",">
+	                   #{item}
+	                </foreach>
+			  </if>
+			  
+			  <if test="custNm != null and custNm != ''">
+				and replace(sal.cust_nm, ' ', '') like replace(concat('%', #{custNm}, '%'), ' ', '')
+			  </if>
+			  
+			  and sal.def_cl = #{defCl}
+			  and bo.use_yn = 'Y'
+			  and sal.inc_yymm between #{stYymm} and #{endYymm}	
+			</if>
+			
+			<if test="searchExpYn == 'Y'.toString() and searchSalYn == 'Y'.toString()">
+			 union all
+			</if>
+			
+			<if test="searchExpYn != null and searchExpYn == 'Y'.toString()">
+			 -- 비용 실적
+			  select if(bo.bo_cl = 'H', bo.bo_id, bo.pbo_id) as bo_id
+				,if(bo.bo_cl = 'H', bo.bo_nm, (select bo_nm from tb_bo t where bo.pbo_id = t.bo_id)) as bo_nm
+				,if(bo.bo_cl = 'B', bo.bo_id, '') as sub_bo_id
+				,if(bo.bo_cl = 'B', bo.bo_nm, '') as sub_bo_nm
+				,iexp.inc_yymm
+				,bo.crncy_cd
+				<!-- 검색 시 영업외손익 -> ETC인것을 조회 / 판관비상세는 -> 영업실적인 것을 조회 하기 위하여 CD_VAl 에 
+				     두개의 공통코드를 매칭해서 조회하였음  -->
+				,(select if(#{locale} = 'ko', std_cd_nm, std_cd_nm_eng) inc10_nm
+					from tb_tcc t1, tb_tcc_val t2
+				   where t1.bse_cd = 'INC01'
+				    and t1.tcc_id = t2.tcc_id
+		  	  	  	and t1.comp_id  = #{compId}
+		  	  	  	and t1.del_yn = 'N'
+		  	  	  	and t2.del_yn = 'N'
+		  	  	  	and tcv.cd_val = t2.std_cd 
+				) as inc10_nm
+				<!-- ,F_GET_COMMCD_NM(1000016, #{locale}) inc10_nm -->
+				,iexp.cl1_cd
+				,iexp.cl2_cd
+				,iexp.cl3_cd
+				
+				,'' as cust_nm
+				,iexp.grp1_cd
+				,'' as grp2_cd
+				,'' as grp3_cd
+				,'' as svc_typ
+				,'' as biz_cl_cd
+				,'' as biz_obj_cd
+			
+				,null as sal_amt1
+				,null as sal_cst1
+				,null as seae_amt1
+				,null as lbr_cost1
+				,null as exp_amt1
+				,null as ifo_amt1
+				
+				,(iexp.rvn_amt+iexp.exp_amt) as rvn_exp_amt1  -- 비용금액
+				,null as pt_amt1 -- 지급금액
+				
+				,'' as fr_area
+				,'' as fr_sbu_area
+				,'' as to_sbu_area
+		
+				,(select CAST(cd_val AS SIGNED) from tb_tcc_val t1, tb_tcc t2 where t2.BSE_CD = 'UNTDP' and t1.tcc_id = t2.tcc_id and t1.STD_CD = #{untDp}) unt
+			  from tb_bo_inc_ret_exp iexp
+				  left join (
+			  	  	 select tcv.tccv_id, tcv.tcc_id, tcv.std_cd, tcv.cd_val, tcv.std_cd_nm, tcv.std_cd_nm_eng
+			  	  	   from tb_tcc tc, tb_tcc_val tcv
+			  	  	  where tc.bse_cd = 'M101'
+			  	  	  	and tc.tcc_id = tcv.tcc_id
+			  	  	  	and tc.comp_id  = 100
+			  	  	  	and tc.del_yn = 'N'
+			  	  	  	and tcv.del_yn = 'N'
+			  	  ) tcv on (iexp.typ_cd = tcv.std_cd_nm or iexp.typ_cd = tcv.std_cd_nm_eng)
+			  	  ,tb_bo bo
+			  	  
+			 where iexp.bo_id = bo.bo_id
+			  <if test="boIds != null and boIds.size() > 0">
+               and (
+               <foreach collection="boIds" item="boId" separator="or">
+               		iexp.bo_id in (                  
+                       select t2.bo_id from tb_bo t2
+						where (t2.bo_id = #{boId} or t2.pbo_id = #{boId})
+					)
+               </foreach>
+                   )
+		      </if>
+		      
+		      <if test="grp01s != null and grp01s.size() > 0">
+				and iexp.grp1_cd in
+	                <foreach collection="grp01s" item="item" open="(" close=")" separator=",">
+	                   #{item}
+	                </foreach>
+			  </if>
+			  
+		      <if test="cl1Cds != null and cl1Cds.size() > 0">
+				and iexp.cl1_cd in
+	                <foreach collection="cl1Cds" item="item" open="(" close=")" separator=",">
+	                   #{item}
+	                </foreach>
+			  </if>
+			  
+			   <if test="cl2Cds != null and cl2Cds.size() > 0">
+				and iexp.cl2_cd in
+	                <foreach collection="cl2Cds" item="item" open="(" close=")" separator=",">
+	                   #{item}
+	                </foreach>
+			  </if>
+			  
+			   <if test="cl3Cds != null and cl3Cds.size() > 0">
+				and iexp.cl3_cd in
+	                <foreach collection="cl3Cds" item="item" open="(" close=")" separator=",">
+	                   #{item}
+	                </foreach>
+			  </if>
+			  
+			  <if test="inc01s != null and inc01s.size() > 0">
+				and tcv.cd_val in
+	                <foreach collection="inc01s" item="item" open="(" close=")" separator=",">
+	                   #{item}
+	                </foreach>
+			  </if>
+			  
+			  and iexp.def_cl = #{defCl}
+			  and bo.use_yn = 'Y'
+			  and iexp.inc_yymm between #{stYymm} and #{endYymm}	
+			  
+			<if test="searchHopayYn == 'Y'.toString() and ( searchExpYn == 'Y'.toString() or searchSalYn == 'Y'.toString())">
+			 union all
+			</if>
+			 
+			</if>			
+			
+			<if test="searchHopayYn != null and searchHopayYn == 'Y'.toString()">
+			 -- 본사지급분
+			  select if(bo.bo_cl = 'H', bo.bo_id, bo.pbo_id) as bo_id
+				,if(bo.bo_cl = 'H', bo.bo_nm, (select bo_nm from tb_bo t where bo.pbo_id = t.bo_id)) as bo_nm
+				,if(bo.bo_cl = 'B', bo.bo_id, '') as sub_bo_id
+				,if(bo.bo_cl = 'B', bo.bo_nm, '') as sub_bo_nm
+				,hopay.inc_yymm
+				,bo.crncy_cd
+				,F_GET_COMMCD_NM(1000017, #{locale}) inc10_nm
+				,hopay.cl1_cd
+				,hopay.cl2_cd
+				,hopay.cl3_cd
+				
+				,'' as cust_nm
+				,'' as grp1_cd
+				,'' as grp2_cd
+				,'' as grp3_cd
+				,'' as svc_typ
+				,'' as biz_cl_cd
+				,'' as biz_obj_cd
+			
+				,null as sal_amt1
+				,null as sal_cst1
+				,null as seae_amt1
+				,null as lbr_cost1
+				,null as exp_amt1
+				,null as ifo_amt1
+				
+				,null as rvn_exp_amt1  -- 비용금액
+				,hopay.pt_amt as pt_amt1 -- 지급금액
+				
+				,'' as fr_area
+				,'' as fr_sbu_area
+				,'' as to_sbu_area
+		
+				,(select CAST(cd_val AS SIGNED) from tb_tcc_val t1, tb_tcc t2 where t2.BSE_CD = 'UNTDP' and t1.tcc_id = t2.tcc_id and t1.STD_CD = #{untDp}) unt
+			  from tb_bo_inc_ret_hopay hopay
+			  	  ,tb_bo bo
+			  	  
+			 where hopay.bo_id = bo.bo_id
+			  <if test="boIds != null and boIds.size() > 0">
+               and (
+	               <foreach collection="boIds" item="boId" separator="or">
+	               		hopay.bo_id in (                  
+	                       select t2.bo_id from tb_bo t2
+							where (t2.bo_id = #{boId} or t2.pbo_id = #{boId})
+						)
+	               </foreach>
+	                   )
+			      </if>
+			  and hopay.def_cl = #{defCl}
+			  
+			  <if test="cl1Cds != null and cl1Cds.size() > 0">
+				and hopay.cl1_cd in
+	                <foreach collection="cl1Cds" item="item" open="(" close=")" separator=",">
+	                   #{item}
+	                </foreach>
+			  </if>
+			  
+			  <if test="cl1Cds != null and cl1Cds.size() > 0">
+				and hopay.cl1_cd in
+	                <foreach collection="cl1Cds" item="item" open="(" close=")" separator=",">
+	                   #{item}
+	                </foreach>
+			  </if>
+			  
+			  <if test="cl2Cds != null and cl2Cds.size() > 0">
+				and hopay.cl2_cd in
+	                <foreach collection="cl2Cds" item="item" open="(" close=")" separator=",">
+	                   #{item}
+	                </foreach>
+			  </if>
+			  
+			  <if test="cl3Cds != null and cl3Cds.size() > 0">
+				and hopay.cl3_cd in
+	                <foreach collection="cl3Cds" item="item" open="(" close=")" separator=",">
+	                   #{item}
+	                </foreach>
+			  </if>
+			  
+			  and bo.use_yn = 'Y'
+			  and hopay.inc_yymm between #{stYymm} and #{endYymm}
+			 </if>
+		  ) t
+		  left join (
+		  		select c.crncy_cd, substr(c.yymm, 1, 4) yy, fn_get_last_exchg_rate(substr(c.yymm, 1, 4), c.crncy_cd) as cur_exchg_rate 
+				 from tb_exchg_rate c
+				group by substr(c.yymm, 1, 4), c.crncy_cd
+		  	) c on t.crncy_cd = c.crncy_cd and substr(t.inc_yymm, 1, 4) = yy
+
+  	</select>
+  	
+  	
+</mapper>
+
+

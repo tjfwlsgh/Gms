@@ -1,0 +1,147 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+ 	@FileName    : IncSalePlanDao.java
+	@Date        	: 2022.02.21
+ 	@Author      : jokim
+ 	@Description : 매출계획 DAO DB Query Mapper xml
+ 	@History     :
+ -->
+<!DOCTYPE mapper
+    PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+    "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="com.lgl.gms.webapi.inc.persistence.dao.IncSalePlanDao">
+  	
+  	<!-- 법인 손익 계획 매출리스트 조회 -->
+	<select id="selectIncSalePlanList" resultType="com.lgl.gms.webapi.inc.dto.response.BoIncSalePlanResponse" parameterType="com.lgl.gms.webapi.inc.dto.request.BoIncPlanRequest">
+		select bo_id
+			 , inc_yy
+			 , inc_mon
+			 , seq
+			 , bo_cust_cd
+			 , cust_nm
+			 , svc_typ
+			 , grp1_cd
+			 , grp2_cd
+			 , grp3_cd
+			 , sal_amt
+			 , sal_cst
+			 , seae_amt
+			 , lbr_cost
+			 , exp_amt
+			 , ifo_amt
+			 , reg_dt
+			 , upd_dt
+			 , work_ip
+			 , reg_no
+			 , upd_no
+		from tb_bo_inc_pln_sal a
+	  where bo_id = #{boId}
+		 and inc_yy = #{incYy}
+  	</select>
+  	
+  	<!-- 법인 손익 매출계획 상세 갯수 조회 -->
+	<select id="selectIncSalePlanDetCount" resultType="Integer" parameterType="com.lgl.gms.webapi.inc.dto.request.BoIncPlanRequest">
+		select count(1)
+		  from tb_bo_inc_pln_sal_det
+		 where bo_id = #{boId}
+		  and inc_yy = #{incYy}
+  	</select>
+  	
+  	<!-- 매출계획 삭제 -->
+  	<delete  id="deleteIncPlanSal" parameterType="com.lgl.gms.webapi.inc.dto.request.BoIncPlanRequest">
+  		delete from tb_bo_inc_pln_sal
+		where bo_id = #{boId}
+		 and inc_yy = #{incYy} 
+  		<if test="incMon!=null and incMon!=''">and inc_mon=#{incMon}</if>
+  		<if test="seq!=null and seq!=''">and seq=#{seq}</if>
+  	</delete>
+  	
+  	<!-- 매출계획 상세 삭제 -->
+  	<delete  id="deleteIncPlanSalDet" parameterType="com.lgl.gms.webapi.inc.dto.request.BoIncPlanRequest">
+  		delete from tb_bo_inc_pln_sal_det
+		where bo_id = #{boId}
+			and inc_yy = #{incYy}
+			and inc_mon = #{incMon} 
+			and seq=#{seq}
+  	</delete>
+  	
+	<!-- 법인 손익 매출계획 추가  -->
+   	<insert id="insertIncPlanSal" parameterType="java.util.List">
+   		insert into tb_bo_inc_pln_sal
+				(  bo_id
+				 , inc_yy
+				 , inc_mon
+				 , seq
+				 , bo_cust_cd
+				 , cust_nm
+				 , svc_typ
+				 , grp1_cd
+				 , grp2_cd
+				 , grp3_cd
+				 , sal_amt
+				 , sal_cst
+				 , seae_amt
+				 , lbr_cost
+				 , exp_amt
+				 , ifo_amt
+				 , reg_dt
+				 , upd_dt
+				 , work_ip
+				 , reg_no
+				 , upd_no
+			  )
+			 values
+	        <foreach collection="list" item="item" index="index" separator=" , ">
+	           ( 
+	           	 #{item.boId}
+				 ,#{item.incYy}
+				 ,#{item.incMon}
+				 ,(select ifnull(max(b.seq),0)+1 from tb_bo_inc_pln_sal b where b.bo_id=#{item.boId} and b.inc_yy=#{item.incYy} and b.inc_mon=#{item.incMon})
+				 ,#{item.boCustCd}
+				 ,#{item.custNm}
+				 ,#{item.svcTyp}
+				 ,#{item.grp1Cd}
+				 ,#{item.grp2Cd}
+				 ,#{item.grp3Cd}
+				 ,#{item.salAmt}
+				 ,#{item.salCst}
+				 ,#{item.seaeAmt}
+				 ,#{item.lbrCost}
+				 ,#{item.expAmt}
+				 ,#{item.ifoAmt}
+				 , NOW()
+				 , NOW()
+				 ,#{item.workIp}
+				 ,#{item.regNo}
+				 ,#{item.updNo}
+				)
+	        </foreach>
+
+  	</insert>   	
+  	
+  	<!-- 저장시 상세정보 프로시저-->
+	<parameterMap type="com.lgl.gms.webapi.inc.dto.request.BoIncPlanRequest" id="incSalPlnDetProcMap" >
+		<parameter property="boId" 	jdbcType="VARCHAR" javaType="java.lang.Integer" mode="IN" />
+		<parameter property="incYy" jdbcType="VARCHAR" javaType="java.lang.String" mode="IN" />
+		<parameter property="rtn" jdbcType="VARCHAR" javaType="java.lang.String" mode="OUT" />
+	</parameterMap>
+	<select  id="procIncSalDet" parameterMap="incSalPlnDetProcMap" statementType="CALLABLE">
+		<![CDATA[
+			{call sp_crt_inc_pln_sal_det(?, ?, 'ALL', ?)}
+		]]>
+	</select>
+	
+	<!-- 매출계획 정보헤더값 update 마감-->
+	<update id="updateIncSalPlanCls" parameterType="com.lgl.gms.webapi.inc.persistence.model.BoIncPlnModel">
+		update tb_bo_inc_pln a
+			set a.upd_dt = now()
+				, a.upd_no = #{updNo}
+				, a.pln_cls1='Y'
+		where a.bo_id = #{boId}
+			and a.inc_yy = #{incYy}
+	</update>
+
+</mapper>
+
+

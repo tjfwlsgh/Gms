@@ -1,0 +1,109 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+ 	@FileName    : BseExchgRateInqMapper.xml
+	@Date        : 22.03.30
+ 	@Author      : hj.Chung
+ 	@Description : DB Query Mapper xml
+ 	@History     :
+ -->
+<!DOCTYPE mapper
+    PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+    "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+    
+<mapper namespace="com.lgl.gms.webapi.bse.persistence.dao.BseExchgRateInqDao">
+	<!-- 환율 정보 조회 -->
+	<select id="selectExchgRateInqList" resultType="com.lgl.gms.webapi.bse.dto.response.BseExchgRateInqResponse" parameterType="com.lgl.gms.webapi.bse.dto.request.BseExchgRateInqRequest"> 
+		select yymm
+			 , crncy_cd
+			 , exchg_rate_det
+			 , cur_exchg_rate
+			 , std
+			 , etd
+			 , rcp_dt
+		from tb_exchg_rate
+		where yymm = #{yymm}
+	</select>
+	
+	
+	<!-- 계획 환율 정보 조회 -->
+	<select id="selectPlnExchgRateInqList" resultType="com.lgl.gms.webapi.bse.dto.response.BsePlnExchgRateInqResponse" parameterType="com.lgl.gms.webapi.bse.dto.request.BsePlnExchgRateInqRequest"> 
+		select yymm
+			 , crncy_cd
+			 , exchg_rate_det
+			 , cur_exchg_rate
+			 , std
+			 , etd
+			 , rcp_dt
+		from tb_exchg_rate_pln
+		where yymm = #{yymm}
+	</select>
+	
+	<!-- 환율 정보 삭제 -->
+  	<delete  id="deleteExchgRate" parameterType="java.util.Map">
+  		delete from tb_exchg_rate
+		where yymm = #{yymm}
+  	</delete>
+  	
+  	<!-- 계획 환율 정보 삭제 -->
+  	<delete  id="deletePlnExchgRate" parameterType="java.util.Map">
+  		delete from tb_exchg_rate_pln
+		where yymm = #{yymm}
+  	</delete>
+  	
+  	<!-- 환율 정보 추가  -->
+   	<insert id="insertIncExpPlan" parameterType="java.util.Map">
+   		insert into tb_exchg_rate
+			 ( 
+			   yymm
+			 , crncy_cd
+			 , exchg_rate_det
+			 , cur_exchg_rate
+			 , cal_exchg_rate
+			 , std
+			 , etd
+			 , rcp_dt 
+			 )
+			 values
+	        <foreach collection="exchgRateList" item="item" index="index" separator=" , ">
+	           ( 
+	           	 #{yymm}
+				 ,right(#{item.exchgRateDet}, 3)
+				 ,#{item.exchgRateDet}
+				 ,#{item.curExchgRate} 
+				 ,#{item.curExchgRate}/(SELECT VAL FROM tb_crncy WHERE CRNCY_CD = right(#{item.exchgRateDet}, 3))
+				 ,ifnull(#{std}, '')
+				 ,ifnull(#{etd}, '')
+				 ,ifnull(#{rcpDt}, '')
+				)
+	        </foreach>
+  	</insert>   
+  	
+  	<!-- 환율 정보 추가  -->
+   	<insert id="insertPlnIncExpPlan" parameterType="java.util.Map">
+   		insert into tb_exchg_rate_pln
+			 ( 
+			   yymm
+			 , crncy_cd
+			 , exchg_rate_det
+			 , cur_exchg_rate
+			 , cal_exchg_rate
+			 , std
+			 , etd
+			 , rcp_dt 
+			 )
+			 values
+	        <foreach collection="plnExchgRateList" item="item" index="index" separator=" , ">
+	           ( 
+	           	 #{yymm}
+				 ,right(#{item.exchgRateDet}, 3)
+				 ,#{item.exchgRateDet}
+				 ,#{item.curExchgRate}
+				 ,#{item.curExchgRate}/(SELECT VAL FROM tb_crncy WHERE CRNCY_CD = right(#{item.exchgRateDet}, 3))
+				 ,ifnull(#{std}, '')
+				 ,ifnull(#{etd}, '')
+				 ,ifnull(#{rcpDt}, '')
+				)
+	        </foreach>
+  	</insert>   
+	
+</mapper>

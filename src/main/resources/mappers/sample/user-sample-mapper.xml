@@ -1,0 +1,148 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+ 	@FileName    : user-mapper.java
+	@Date        :
+ 	@Author      :
+ 	@Description : DB Query Mapper xml
+ 	@History     :
+ -->
+<!DOCTYPE mapper
+    PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+    "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="com.lgl.gms.webapi.sample.persistence.dao.UserSampleDao">
+
+<!-- User 정보처리 시작  -->
+  	<resultMap id="UserMap" type="com.lgl.gms.webapi.sample.persistence.model.UserSampleModel">
+	    <id column="id" jdbcType="VARCHAR" property="id" />
+	    <result column="pw" jdbcType="VARCHAR" property="pw" />
+	    <result column="salt" jdbcType="VARCHAR" property="salt" />
+	    <result column="username" jdbcType="VARCHAR" property="username" />
+	    <result column="address" jdbcType="VARCHAR" property="address" />
+	    <result column="company" jdbcType="VARCHAR" property="company" />
+	    <result column="email" jdbcType="VARCHAR" property="email" />
+	    <result column="phone" jdbcType="VARCHAR" property="phone" />
+	    <result column="created_dt" jdbcType="TIMESTAMP" property="createdDt" />
+	    <result column="updated_dt" jdbcType="TIMESTAMP" property="updatedDt" />
+	    <result column="pw_chg_dt" jdbcType="TIMESTAMP" property="pwChgDt" />
+	    <result column="gender" jdbcType="VARCHAR" property="gender" />
+	    <result column="user_type" jdbcType="VARCHAR" property="userType" />
+	    <result column="del_yn" jdbcType="VARCHAR" property="delYn" />
+	    <result column="lock_yn" jdbcType="VARCHAR" property="lockYn" />
+	    <result column="login_fail_cnt" jdbcType="INTEGER" property="loginFailCnt" />
+	    <result column="refresh_token" jdbcType="VARCHAR" property="refreshToken" />
+	</resultMap>
+
+  	<!-- 사용자 정보가져오기  -->
+	<select id="selectUserByEmail" resultMap="UserMap" parameterType="java.lang.String">
+		SELECT id, pw, username, email, phone, company, address, gender, created_dt, updated_dt, del_yn, salt, user_type, refresh_token, lock_yn, login_fail_cnt
+		FROM tb_test_user WHERE email = #{email}  AND (del_yn !='Y')
+  	</select>
+
+	<select id="selectUserById" resultMap="UserMap" parameterType="java.lang.String">
+		SELECT id, pw, username, email, phone, company, address, gender, created_dt, updated_dt, del_yn, salt, user_type, refresh_token, lock_yn, login_fail_cnt
+		FROM tb_test_user WHERE id = #{id}  AND (del_yn !='Y')
+  	</select>
+
+  	<!-- 사용자 추가  -->
+   	<insert id="insertUser" parameterType="com.lgl.gms.webapi.sample.persistence.model.UserSampleModel">
+   		insert into tb_test_user
+		(pw, username, phone, email, del_yn, salt, company, address, gender)
+		values(#{pw},#{username},#{phone},#{email},'N', #{salt},  #{company}, #{address}, #{gender})
+		<selectKey keyProperty="id" resultType="Integer">
+       		SELECT LAST_INSERT_ID()
+   		</selectKey>
+  	</insert>
+
+  	<!-- 사용자 정보업데이트  -->
+  	<update id="updateUser" parameterType="com.lgl.gms.webapi.sample.persistence.model.UserSampleModel">
+   		update tb_test_user
+   		<set>
+   		 	updated_dt = now()
+		    <if test="username!=null">,username=#{username}</if>
+		    <if test="phone!=null">,phone=#{phone}</if>
+		    <if test="gender!=null">,gender=#{gender}</if>
+		    <if test="address!=null">,address=#{address}</if>
+		    <if test="company!=null">,company=#{company}</if>
+		    <if test="email!=null">,email=#{email}</if>
+		    <if test="loginFailCnt!=null">,login_fail_cnt=#{loginFailCnt}</if>
+		    <if test="lockYn!=null">,lock_yn=#{lockYn}</if>
+		    <if test="delYn!=null">,del_yn=#{delYn}</if>
+		    <if test="email!=null">,email=#{email}</if>
+		    <if test="salt!=null">,salt = #{salt}</if>
+		    <if test="pw!=null">,pw = #{pw}, pw_chg_date = now()</if>
+		    <if test="refreshToken!=null">,refresh_token = #{refreshToken}</if>
+		</set>
+		where id=#{id}
+  	</update>
+
+  	<!-- 사용자 삭제  -->
+  	<update id="deleteUser"  parameterType="java.util.HashMap">
+		update tb_test_user set del_yn='Y', updated_dt = now() where ID =#{id}
+  	</update>
+
+  	<!-- 사용자 리스트 가져오기  -->
+  	<select id="selectUserListCount" resultType="Integer" parameterType="java.util.HashMap">
+		SELECT count(id)
+		FROM tb_test_user
+		WHERE del_yn = 'N'
+		<if test="username!=null"> AND username like '%${username}%'</if>
+		<if test="email!=null"> AND email like '%${email}%'</if>
+		<if test="company!=null"> AND company like '%${company}%'</if>
+		<if test="address!=null"> AND address like '%${address}%'</if>
+		<if test="sDate!=null">AND created_dt >= #{sDate}</if>
+		<if test="eDate!=null">AND #{eDate} >= created_dt </if>
+  	</select>
+  	<select id="selectUserList" resultType="java.util.HashMap" parameterType="java.util.HashMap">
+		SELECT * FROM ( 
+			  SELECT @ROWNUM := @ROWNUM + 1 AS idx
+			       , t.*
+			    FROM (
+			       SELECT id, phone, email, username, company, address, gender, created_dt, updated_dt, del_yn 
+			         FROM tb_test_user 
+			         WHERE del_yn = 'N' 
+					<if test="username!=null"> AND username like '%${username}%'</if>
+					<if test="email!=null"> AND email like '%${email}%'</if>
+					<if test="company!=null"> AND company like '%${company}%'</if>
+					<if test="address!=null"> AND address like '%${address}%'</if>
+					<if test="sDate!=null">AND created_dt >= #{sDate}</if>
+					<if test="eDate!=null">AND #{eDate} >= created_dt </if>
+			        ORDER BY created_dt DESC 
+                 ) t
+               , ( SELECT @ROWNUM := 0 ) r
+             ) a
+		WHERE a.idx >#{stIdx} and #{edIdx}>=a.idx
+  	</select>
+
+  	<!-- 사용자 리스트 가져오기 (삭제된 사용자 포함 - 관리자용) -->
+  	<select id="selectUserListAllCount" resultType="Integer" parameterType="java.util.HashMap">
+		SELECT count(id)
+		FROM tb_test_user
+		WHERE 1=1
+		<if test="username!=null"> AND username like '%${username}%'</if>
+		<if test="email!=null"> AND email like '%${email}%'</if>
+		<if test="company!=null"> AND company like '%${company}%'</if>
+		<if test="address!=null"> AND address like '%${address}%'</if>
+		<if test="sDate!=null">AND created_dt >= #{sDate}</if>
+		<if test="eDate!=null">AND #{eDate} >= created_dt </if>
+  	</select>
+  	<!-- 사용자 리스트 가져오기 (삭제된 사용자 포함 - 관리자용) -->
+  	<select id="selectUserListAll" resultType="java.util.HashMap" parameterType="java.util.HashMap">
+		SELECT * FROM (
+			SELECT (ROW_NUMBER() over()) as idx, id, phone, email, username, company, address, gender, created_dt, updated_dt, del_yn
+			FROM tb_test_user
+			WHERE 1=1
+			<if test="username!=null"> AND username like '%${username}%'</if>
+			<if test="email!=null"> AND email like '%${email}%'</if>
+			<if test="company!=null"> AND company like '%${company}%'</if>
+			<if test="address!=null"> AND address like '%${address}%'</if>
+			<if test="sDate!=null">AND created_dt >= #{sDate}</if>
+			<if test="eDate!=null">AND #{eDate} >= created_dt </if>
+			ORDER BY created_dt DESC
+		) a
+		WHERE a.idx >#{stIdx} and #{edIdx}>=a.idx
+  	</select>
+  	
+</mapper>
+
+

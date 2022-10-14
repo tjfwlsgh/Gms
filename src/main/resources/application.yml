@@ -1,0 +1,24 @@
+# 공통적인 부분은 여기서 설정합니다. (application-dev/application-prod 로 분리되어있지만 동일하게 사용하는 부분은 여기에 정의해서 사용해도 됨.)
+spring:
+  main:
+    allow-bean-definition-overriding: true  # bean 생성시, 이름이 동일한 경우 재정의 가능하도록 설정함
+  web:
+    locale: ko  #default 로케일설정 : ko/en
+# default로 사용할 Profile
+---
+spring:
+  profiles:
+    active:
+    - loc
+    # - dev
+    
+# local 개발환경 설정
+---
+server:
+  tomcat:
+    uri-encoding: UTF-8
+  servlet:
+    encoding:
+      charset: UTF-8
+      enabled: true
+      force: true

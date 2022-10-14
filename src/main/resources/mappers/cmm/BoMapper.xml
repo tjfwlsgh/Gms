@@ -1,0 +1,99 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+ 	@FileName    : BoDao.java
+	@Date        :
+ 	@Author      :
+ 	@Description : DB Query Mapper xml
+ 	@History     :
+ -->
+<!DOCTYPE mapper
+    PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+    "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+    
+<mapper namespace="com.lgl.gms.webapi.cmm.persistence.dao.BoDao">
+	
+	<resultMap id="BoMap" type="com.lgl.gms.webapi.cmm.dto.response.BoResponse">
+		<id property="boId" column="bo_id" />
+		<result property="boNm" column="bo_nm"/>
+		<result property="boNmEng" column="bo_nm_eng"/>
+		<result property="trrtId" column="trrt_id"/>
+	  <collection column="{pboId=bo_id, compId=comp_id, useYn=use_yn, locale=locale}" property="subBos" javaType="java.util.ArrayList" select="selectSubBoList" ofType="com.lgl.gms.webapi.cmm.dto.response.BoResponse">
+	  </collection>
+	</resultMap>
+	
+  	<!-- 법인리스트 조회  -->
+    <select id="selectBoList" parameterType="com.lgl.gms.webapi.cmm.dto.request.BoRequest" resultMap="BoMap" >
+    
+		select a.bo_id
+				,a.comp_id
+				,a.bo_cd
+				,a.bo_cl
+				,if(#{locale} = 'ko', bo_nm, bo_nm_eng) bo_nm
+				,a.bo_nm as bo_nm_ko
+				,a.bo_snm
+				,a.bo_nm_eng
+				,a.bo_snm_eng
+				,a.cntry_cd
+				,a.crncy_cd
+				,a.use_yn
+				,#{locale} as locale
+				,a.trrt_id
+		from tb_bo a
+		where a.comp_id  = #{compId}
+		<if test="useYn!=null and useYn!='' and useYn=='Y'.toString()">
+			 and a.use_yn= #{useYn}
+		</if>
+		 and a.bo_cl = 'H'
+		 
+    </select>
+    
+    <!-- 지점리스트 조회  -->
+    <select id="selectSubBoList" parameterType="java.util.Map" resultType="com.lgl.gms.webapi.cmm.dto.response.BoResponse" >
+		select a.bo_id
+				,a.comp_id
+				,a.bo_cd
+				,a.bo_cl
+				,if(#{locale} = 'ko', bo_nm, bo_nm_eng) bo_nm
+				,a.bo_nm as bo_nm_ko
+				,a.bo_snm
+				,a.bo_nm_eng
+				,a.bo_snm_eng
+				,a.cntry_cd
+				,a.crncy_cd
+		from tb_bo a
+		where a.comp_id = #{compId}
+		 <if test="useYn!=null and useYn!='' and useYn=='Y'.toString()">
+			 and a.use_yn= #{useYn}
+		</if>
+		 AND a.pbo_id = #{pboId}
+		
+    </select>
+    
+    
+    <!-- 전체 법인/지점 리스트 조회  -->
+    <select id="selectAllBoList" parameterType="com.lgl.gms.webapi.cmm.dto.request.BoRequest" resultType="com.lgl.gms.webapi.cmm.dto.response.BoResponse" >
+    
+		select a.bo_id
+				,a.comp_id
+				,a.bo_cd
+				,a.bo_cl
+				,if(#{locale} = 'ko', bo_nm, bo_nm_eng) bo_nm
+				,a.bo_nm as bo_nm_ko
+				,a.bo_snm
+				,a.bo_nm_eng
+				,a.bo_snm_eng
+				,a.cntry_cd
+				,a.crncy_cd
+				,a.use_yn
+				,a.trrt_id
+		from tb_bo a
+		where a.comp_id  = #{compId}
+		<if test="useYn!=null and useYn!='' and useYn=='Y'.toString()">
+			 and a.use_yn= #{useYn}
+		</if>
+		 
+    </select>
+    
+
+
+</mapper>
